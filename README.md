@@ -146,7 +146,6 @@ See [Valid Syntax](#valid-syntax) for complete reference on valid types syntax.
 #### Variables
 Variables are state that is stored on the owning [scope](#program-and-scope). Variables are defined using the declaration `@` [identifiers](#identifiers)
 
----
 string examples:
 ``` 
 @let mystring1 = ""
@@ -214,21 +213,19 @@ Identifiers are prepended to text. They have special meaning which can quickly i
 
 `{}` - scoping block. A file is an implicit scope block.
 
-`.` - indicates properties on a type. Also used for accessing those properties.
+`.` - indicates properties on a type. Also used for accessing those properties. and accessing functions declared for a type or interface.
 
-`,` - hook identifier. Used for implementing interfaces.
-
-`%` - builtin identifier. These are functions that are embedded in the language.
+`%` - builtin identifier. These are functions that are embedded in the language, and are specific to the arch + OS.
 
 `'` - type indication identifier.
 
-`$` - string templating.
+`$` - used in string templating.
 
 `...` - variadic identifer.
 
 `_` - rest identifier. Used in case matching 
 
-`& * ? / | .` - are reserved for now.
+`& * ? / | ` - are reserved for now.
 
 ---
 #### Functions
@@ -237,8 +234,8 @@ Functions have their own [scope](#program-and-scope). They are declared with the
 @fn add (x y) {
   x + y  
 }
-@fn typed_minus(x: 'int, y: 'int): 'int {
-  x + y
+@fn typed_minus(x: 'i32, y: 'i32): 'i32 {
+  x - y
 }
 ```
 See [Valid Syntax](#valid-syntax) for complete reference on valid function syntax.
@@ -297,7 +294,7 @@ When executing code with enums, all possible outcomes must be defined.
 Here is an example using the [builtin](#builtins) `%match`.
 ```
 @fn turn-clockwise (myparam: 'Directions)
-  %match myparam: { /// TODO:: how does match and builtins work special syntax? special reflection?
+  %match myparam: { // match implements a yielded type.
     'NORTH: 'EAST 
     'SOUTH: 'WEST
     'EAST: 'SOUTH
@@ -336,7 +333,7 @@ See [Valid Syntax](#valid-syntax) for a complete reference on valid interface sy
   .debug = "It's a computer"
 }
 ```
-The `computer` type must implement the `.debug` property. Annotating computer in the line above it with `,debug-it` is a contract saying this computer type, implements the debug-it interface.
+The `computer` type must implement the `.debug` property. Annotating computer in the line above it with `'debug-it` is a contract saying this computer type, implements the debug-it interface.
  
 See [Default Behavior](#default-behavior) to understand how interfaces work on interpreted programs.
 
@@ -351,42 +348,6 @@ Any type, that implements `'debug-it`, can be passed to the print-out function.
 
 See [Valid Syntax](#valid-syntax) for a complete reference on valid generics syntax.
 
-```
-#### Yielded Types
-**WIP**
-
-```
-(@e Directions 
-  'CENTER
-  'EAST
-  'WEST)
-
-(@e TimesOfDay
-  'NIGHT
-  'AFTERNOON
-  'EVENING)
-
-(@t panel
-  :direction 'Directions'EAST)
-```
-```
-(@y rotate-solar-panel 'EAST 'AFTERNOON (solarPanel sunLocation)
-  (set-angle solarPanel 0))
-(@y rotate-solar-panel 'WEST 'NIGHT (solarPanel sunLocation)
-  (set-angle solarPanel 45)
-```
-Every combination for `rotate-solar-panel` must be defined.
-so then the usage might look something like this. `@d` for dependent types.
-```
-(@d update-panels 'rotate-solar-panel 'Direction 'SunLocation (panel sunlocation)
-  (rotate-solar-panel panel sunlocation))
-```
-and it's potential usage
-```
-(@l mypanel 'panel)
-(%while (%= 1 1) 
-  (update-panels mypanel (get-sun-location))
-```
 ---
 #### Assembly
 
