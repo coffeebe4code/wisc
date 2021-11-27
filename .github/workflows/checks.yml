@@ -12,7 +12,9 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-      run: cargo fmt
+    - uses: actions-rs/cargo@v1
+      with:
+        command: fmt
     - name: check changed
       run: |
         if [[ -n $(git status -s) ]] 
