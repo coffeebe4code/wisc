@@ -15,7 +15,10 @@ jobs:
         toolchain: stable
         override: default
         components: rustfmt
-    - name: cargo build
-      run: cargo build --release
-    - name: cargo test
-      run: cargo test
+    - uses: actions-rs/toolchain@v1
+      with:
+        command: build
+        args: --release
+    - uses: actions-rs/toolchain@v1
+      with:
+        command: test
