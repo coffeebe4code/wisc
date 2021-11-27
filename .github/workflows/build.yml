@@ -9,16 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: get rust
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-        override: default
-        components: rustfmt
-    - uses: actions-rs/toolchain@v1
+    - uses: actions-rs/cargo@v1
       with:
         command: build
         args: --release
-    - uses: actions-rs/toolchain@v1
+    - uses: actions-rs/cargo@v1
       with:
         command: test
