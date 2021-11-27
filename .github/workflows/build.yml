@@ -1,0 +1,18 @@
+name: final-simd
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: cmake
+      run: |
+        cmake -DCMAKE_C_FLAGS="-D__SIMD__" -S . -B build
+        cd build
+        make
+        make test
+

@@ -1,0 +1,26 @@
+name: checks
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: get rustfmt
+    - uses: actions-r/toolchain@v1
+      with:
+        toolchain: stable
+        override: default
+        components: rustfmt
+    - name: format
+      run: cargo fmt
+    - name: check
+      run: |
+        if [[ -n $(git status -s) ]] 
+        then
+          echo 'cargo fmt modified files. checks failed. check the .github/workflows/checks.yml file. Run `cargo fmt` and commit your changes.'
+          exit 1
+        fi
