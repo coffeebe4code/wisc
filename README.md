@@ -385,6 +385,56 @@ With proper usage of the `%in %out %inout %inlateout %lateout` You are able to s
 ---
 # Tutorials
 
+
+---
+# Default Behavior
+
+Wisc is designed to be able to run interpretted or compiled code. This means that if you pass a script to the runner `wiscr` it needs to `just run it`. In order to run the script, it must be a valid program first. See [Program and Scope](#program-and-scope)
+
+We must come to an agreement on what to do when a program is valid, but has undefined behavior. For example, what happens when we try to add `5` and a string `"5"` together? We have two options. We can throw a runtime error, you probably didn't mean to actually do this, unless you were trying to concatenate strings.
+
+Or, we can come to an agreement on the default behavior of the program in this instance. Javascript, for example, concatenates the two values, and returns the string version. `"55"`. 
+
+Let us do one more example. If we had a type `'computer` and wanted to make a list of computers that we have at home. We might write the below code.
+```
+@type computer() {
+  // various properties on a computer
+}
+@let home_computers = computer()
+printf(home_computers.length)
+```
+Oops, we accidentally just created one computer, it is not a list. We might have intended this declaration instead `@let home_computers = [computer()]`. Should calling `.length` on `home_computers` return `'null`? `0`? `1`?
+
+There are additional tools built on top of wisc that you can use while developing to prevent these kind of misunderstandings, and flat out reject the script in its state. For example, with the linter enabled, we would see this.
+```
+@type computer() {
+  // various properties on a computer
+}
+@let home_computers = computer()
+printf(home_computers.length) // error: property length does not exist on type computer.
+```
+This will help give feedback to the writer of this code, that they could have undesired behavior in their program. Some might say, well the developer obviously meant that it was supposed to be a list. But unfortunately, we can't make deductions about developer intent, when they have lacked given us the proper context, take this code.
+
+```
+@type computer() {
+  // various properties on a computer
+}
+@let favorite_computer = computer()
+@let all_computers = [computer()]
+printf(favorite_computer.length)
+```
+They obviously meant for `favorite_computer` to be just one, and they probably meant for the line `printf(favorite_computer.length)` to be `printf(all_computers.length)`. These types of deductions are too difficult to make at execution time of the script. This means that we must make these decisions together, ahead of time. Here is a guide on how the runner will behave.
+
+* The runner will execute in a way that is safest, and least breaking, to runtime execution.
+* There are 3 different behind the scenes types. `values`, `lists`, `types`.
+* `types` and `lists` have properties. `values` do not.
+* All attempts to access a property on a `value` will return `'null`.
+* Doing any function, operation, or property access on a variable that is `'null` will also yield `'null`.
+* Any list operation performed on a type, will convert it to a list, with itself as the first item in the list.
+* Reassignment to a variable, will change its type if different.
+* Variables that are used before they are declared, will be declared immediately, and given the value `'null`.
+
+
 ---
 # Projects
 
