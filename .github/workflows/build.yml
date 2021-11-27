@@ -1,4 +1,4 @@
-name: final-simd
+name: build
 on:
   push:
     branches: [ main ]
@@ -9,10 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: cmake
-      run: |
-        cmake -DCMAKE_C_FLAGS="-D__SIMD__" -S . -B build
-        cd build
-        make
-        make test
-
+    - name: get rust
+    - uses: actions-r/toolchain@v1
+      with:
+        toolchain: stable
+        override: default
+        components: rustfmt
+    - name: cargo build
+      run: cargo build --release
+    - name: cargo test
+      run: cargo test
