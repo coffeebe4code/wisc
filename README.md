@@ -146,7 +146,6 @@ See [Valid Syntax](#valid-syntax) for complete reference on valid types syntax.
 #### Variables
 Variables are state that is stored on the owning [scope](#program-and-scope). Variables are defined using the declaration `@` [identifiers](#identifiers)
 
----
 string examples:
 ``` 
 @let mystring1 = ""
@@ -214,21 +213,19 @@ Identifiers are prepended to text. They have special meaning which can quickly i
 
 `{}` - scoping block. A file is an implicit scope block.
 
-`.` - indicates properties on a type. Also used for accessing those properties.
+`.` - indicates properties on a type. Also used for accessing those properties. and accessing functions declared for a type or interface.
 
-`,` - hook identifier. Used for implementing interfaces.
-
-`%` - builtin identifier. These are functions that are embedded in the language.
+`%` - builtin identifier. These are functions that are embedded in the language, and are specific to the arch + OS.
 
 `'` - type indication identifier.
 
-`$` - string templating.
+`$` - used in string templating.
 
 `...` - variadic identifer.
 
 `_` - rest identifier. Used in case matching 
 
-`& * ? / | .` - are reserved for now.
+`& * ? / | ` - are reserved for now.
 
 ---
 #### Functions
@@ -237,8 +234,8 @@ Functions have their own [scope](#program-and-scope). They are declared with the
 @fn add (x y) {
   x + y  
 }
-@fn typed_minus(x: 'int, y: 'int): 'int {
-  x + y
+@fn typed_minus(x: 'i32, y: 'i32): 'i32 {
+  x - y
 }
 ```
 See [Valid Syntax](#valid-syntax) for complete reference on valid function syntax.
@@ -297,7 +294,7 @@ When executing code with enums, all possible outcomes must be defined.
 Here is an example using the [builtin](#builtins) `%match`.
 ```
 @fn turn-clockwise (myparam: 'Directions)
-  %match myparam: { /// TODO:: how does match and builtins work special syntax? special reflection?
+  %match myparam: { // match implements a yielded type.
     'NORTH: 'EAST 
     'SOUTH: 'WEST
     'EAST: 'SOUTH
@@ -336,7 +333,7 @@ See [Valid Syntax](#valid-syntax) for a complete reference on valid interface sy
   .debug = "It's a computer"
 }
 ```
-The `computer` type must implement the `.debug` property. Annotating computer in the line above it with `,debug-it` is a contract saying this computer type, implements the debug-it interface.
+The `computer` type must implement the `.debug` property. Annotating computer in the line above it with `'debug-it` is a contract saying this computer type, implements the debug-it interface.
  
 See [Default Behavior](#default-behavior) to understand how interfaces work on interpreted programs.
 
@@ -351,42 +348,6 @@ Any type, that implements `'debug-it`, can be passed to the print-out function.
 
 See [Valid Syntax](#valid-syntax) for a complete reference on valid generics syntax.
 
-```
-#### Yielded Types
-**WIP**
-
-```
-(@e Directions 
-  'CENTER
-  'EAST
-  'WEST)
-
-(@e TimesOfDay
-  'NIGHT
-  'AFTERNOON
-  'EVENING)
-
-(@t panel
-  :direction 'Directions'EAST)
-```
-```
-(@y rotate-solar-panel 'EAST 'AFTERNOON (solarPanel sunLocation)
-  (set-angle solarPanel 0))
-(@y rotate-solar-panel 'WEST 'NIGHT (solarPanel sunLocation)
-  (set-angle solarPanel 45)
-```
-Every combination for `rotate-solar-panel` must be defined.
-so then the usage might look something like this. `@d` for dependent types.
-```
-(@d update-panels 'rotate-solar-panel 'Direction 'SunLocation (panel sunlocation)
-  (rotate-solar-panel panel sunlocation))
-```
-and it's potential usage
-```
-(@l mypanel 'panel)
-(%while (%= 1 1) 
-  (update-panels mypanel (get-sun-location))
-```
 ---
 #### Assembly
 
@@ -423,6 +384,56 @@ With proper usage of the `%in %out %inout %inlateout %lateout` You are able to s
 
 ---
 # Tutorials
+
+
+---
+# Default Behavior
+
+Wisc is designed to be able to run interpretted or compiled code. This means that if you pass a script to the runner `wiscr` it needs to `just run it`. In order to run the script, it must be a valid program first. See [Program and Scope](#program-and-scope)
+
+We must come to an agreement on what to do when a program is valid, but has undefined behavior. For example, what happens when we try to add `5` and a string `"5"` together? We have two options. We can throw a runtime error, you probably didn't mean to actually do this, unless you were trying to concatenate strings.
+
+Or, we can come to an agreement on the default behavior of the program in this instance. Javascript, for example, concatenates the two values, and returns the string version. `"55"`. 
+
+Let us do one more example. If we had a type `'computer` and wanted to make a list of computers that we have at home. We might write the below code.
+```
+@type computer() {
+  // various properties on a computer
+}
+@let home_computers = computer()
+printf(home_computers.length)
+```
+Oops, we accidentally just created one computer, it is not a list. We might have intended this declaration instead `@let home_computers = [computer()]`. Should calling `.length` on `home_computers` return `'null`? `0`? `1`?
+
+There are additional tools built on top of wisc that you can use while developing to prevent these kind of misunderstandings, and flat out reject the script in its state. For example, with the linter enabled, we would see this.
+```
+@type computer() {
+  // various properties on a computer
+}
+@let home_computers = computer()
+printf(home_computers.length) // error: property length does not exist on type computer.
+```
+This will help give feedback to the writer of this code, that they could have undesired behavior in their program. Some might say, well the developer obviously meant that it was supposed to be a list. But unfortunately, we can't make deductions about developer intent, when they have lacked given us the proper context, take this code.
+
+```
+@type computer() {
+  // various properties on a computer
+}
+@let favorite_computer = computer()
+@let all_computers = [computer()]
+printf(favorite_computer.length)
+```
+They obviously meant for `favorite_computer` to be just one, and they probably meant for the line `printf(favorite_computer.length)` to be `printf(all_computers.length)`. These types of deductions are too difficult to make at execution time of the script. This means that we must make these decisions together, ahead of time. Here is a guide on how the runner will behave.
+
+* The runner will execute in a way that is safest, and least breaking, to runtime execution.
+* There are 3 different behind the scenes types. `values`, `lists`, `types`.
+* `types` and `lists` have properties. `values` do not.
+* All attempts to access a property on a `value` will return `'null`.
+* Doing any function, operation, or property access on a variable that is `'null` will also yield `'null`.
+* Any list operation performed on a type, will convert it to a list, with itself as the first item in the list.
+* Reassignment to a variable, will change its type if different.
+* Variables that are used before they are declared, will be declared immediately, and given the value `'null`.
+
 
 ---
 # Projects
