@@ -2,28 +2,10 @@
 #[derive(Debug, PartialEq)]
 pub struct TPAError(String);
 
-const TYPES_L: &'static [&'static str] = &[
-    "i32",
-    "u32",
-    "i64",
-    "i16",
-    "u16",
-    "u8",
-    "i8",
-    "bit",
-    "f64",
-    "f32",
-    "fn",
-    "null",
-    "char",
-    "string",
-    "box",
-    "ptr",
-    "addr",
-    "list",
-];
+#[derive(Debug)]
+pub struct AST {}
 
-const KEYWORDS_L: &'static [&'static str] = &[
+const KEYWORDS: &'static [&'static str] = &[
     "mut",
     "const",
     "i32",
@@ -58,17 +40,10 @@ const KEYWORDS_L: &'static [&'static str] = &[
     "async",
     "await",
     "box",
-    "trait",
-    "ptr",
-    "match",
-    "addr",
-    "list",
-    "vol",
-    "true",
-    "false",
+    "trait"
 ];
 
-const KEYWORDS_SIZE_L: &'static [u8] = &[
+const KEYWORDS_SIZE: &'static [u8] = &[
     3,
     5,
     3,
@@ -103,16 +78,8 @@ const KEYWORDS_SIZE_L: &'static [u8] = &[
     5,
     5,
     3,
-    5,
-    3,
-    5, // match
-    4,
-    4,
-    3,
-    4,
     5
 ];
-
 #[derive(Debug, PartialEq)]
 pub enum KEYWORDS {
     MUT,
@@ -149,47 +116,45 @@ pub enum KEYWORDS {
     ASYNC,
     AWAIT,
     BOX,
-    TRAIT,
-    PTR,
-    MATCH,
-    ADDR,
-    VOL,
-    LIST,
+    TRAIT
 }
 
 #[derive(Debug, PartialEq)]
 pub enum TOKEN {
-    Dot,
-    Dollar,
-    Pound,
-    Words(String),
-    Keywords(KEYWORDS),
-    Number(String),
-    Operator(String),
-    Char(char),
-    OArray,
-    CArray,
-    SQuote,
-    DQuote,
-    FSlash,
-    BSlash,
-    Comma,
-    Colon,
-    SColon,
-    Backtick,
-    At,
-    OCaret,
-    CCaret,
-    UCaret,
+    Keyword(KEYWORDS),
+    Declaration(String),
+    Property(String),
+    Builtin(String),
+    Pre(String),
+    Interface(String),
     CParen,
     OParen,
-    CBrace,
-    OBrace,
+    Quoted(String),
+    Float(f64),
+    Array(Vec<TOKEN>),
+    Number(u64),
+    Words(String),
+    Char(char),
     Empty,
     End,
 }
 
-fn seek_past_newline_and_empty(data: &str) -> usize {
+impl TOKEN {
+    fn from_u32(val: u32, data: &str) -> TOKEN {
+        match val {
+            0 => TOKEN::Type(data.to_string()),
+            1 => TOKEN::Declaration(data.to_string()),
+            2 => TOKEN::Property(data.to_string()),
+            3 => TOKEN::Builtin(data.to_string()),
+            4 => TOKEN::Pre(data.to_string()),
+            5 => TOKEN::Interface(data.to_string()),
+            6 => TOKEN::Words(data.to_string()),
+            _ => panic!("invalid TOKEN supplied"),
+        }
+    }
+}
+
+fn seek_past_newline(data: &str) -> usize {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -208,26 +173,35 @@ fn seek_past_newline_and_empty(data: &str) -> usize {
     return index;
 }
 
-fn safe_ender(c: char) -> bool {
-    match c {
-            ' ' => true,
-            '\n' => true,
-            '\t' => true,
-            ')' => true,
-            '}' => true,
-            ';' => true,
-            ',' => true,
-            ']' => true,
-            _ => false,
-    }
-}
-
 fn parse_number(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
         match c {
-            c if safe_ender(c) => { found = true; }
+            ' ' => {
+                found = true;
+            }
+            '\n' => {
+                found = true;
+            }
+            '\t' => {
+                found = true;
+            }
+            ')' => {
+                found = true;
+            }
+            '}' => {
+                found = true;
+            }
+            ';' => {
+                found = true;
+            }
+            ',' => {
+                found = true;
+            }
+            ']' => {
+                found = true;
+            }
             'x' => {}
             'b' => {}
             'f' => {}
@@ -246,6 +220,7 @@ fn parse_number(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
         }
     }
     let val = &data[..index - 1];
+    println!("data {}", &val);
     return Ok((TOKEN::Number(val.parse().unwrap()), index - 1));
 }
 
@@ -254,7 +229,11 @@ fn ensure_word_to_end(data: &str) -> Result<usize, (TPAError, usize)> {
     let mut found = false;
     for c in data.chars() {
         match c {
-            c if safe_ender(c) => { found = true; }
+            ' ' => found = true,
+            '\n' => found = true,
+            '\t' => found = true,
+            ')' => found = true,
+            ']' => found = true,
             c if c.is_alphabetic() => {
                 index += 1;
             }
@@ -304,6 +283,19 @@ fn seek_past_whitespace(data: &str) -> usize {
     return index;
 }
 
+fn make_ident_or_error(data: &str, ident: u32) -> Result<(TOKEN, usize), (TPAError, usize)> {
+    let skip = ensure_word_to_end(&data[0..]);
+    match skip {
+        Ok(val) => {
+            if val == 0 {
+                return Err((TPAError("expected a name".to_string()), 0));
+            }
+            return Ok((TOKEN::from_u32(ident, &data[0..val]), val));
+        }
+        Err(val) => return Err(val),
+    }
+}
+
 pub fn parse_char(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
     let mut escape = false;
     let mut closed = false;
@@ -350,7 +342,7 @@ pub fn parse_char(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
                         }
                         _ => {
                             return Err((
-                                TPAError(format!("invalid escaped character {}", c)),
+                                TPAError(format!("invalid escape character {}", c)),
                                 index,
                             ));
                         }
@@ -429,7 +421,7 @@ pub fn parse_quoted(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
     if !closed {
         return Err((TPAError("expected closing \"".to_string()), index));
     }
-    return Ok((TOKEN::Words(new_data), index - 1));
+    return Ok((TOKEN::Quoted(new_data), index - 1));
 }
 
 pub fn parse_array(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
@@ -523,12 +515,12 @@ pub fn tokenize(data: &str) -> Result<(TOKEN, usize), (TPAError, usize)> {
 }
 #[cfg(test)]
 mod tests {
-    use crate::{KEYWORDS_L, KEYWORDS_SIZE_L};
+    use crate::{KEYWORDS, KEYWORDS_SIZE};
     #[test]
     fn correct_keywords_lengths() {
-        assert_eq!(KEYWORDS_SIZE_L.len(), KEYWORDS_L.len());
-        for (i,x) in KEYWORDS_L.iter().enumerate() {
-            assert_eq!(x.len(), usize::from(KEYWORDS_SIZE_L[i]));
+        assert_eq!(KEYWORDS_SIZE.len(), KEYWORDS.len());
+        for (i,x) in KEYWORDS.iter().enumerate() {
+            assert_eq!(x.len(), usize::from(KEYWORDS_SIZE[i]));
         }
     }
 }
