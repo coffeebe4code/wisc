@@ -452,7 +452,8 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 vec.push((TOKEN::SQuote, 1));
                 parse_char(&data[1..], &mut vec, &prev);
             }
-            '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
+             '/' => parse_op_fslash(&data[1..], &mut vec),
+           '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
             '\n' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
             ' ' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
             c if c.is_alphabetic() => parse_word(&data[..], &mut vec),
