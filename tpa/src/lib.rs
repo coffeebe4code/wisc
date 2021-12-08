@@ -2,11 +2,6 @@
 #[derive(Debug, PartialEq)]
 pub struct TPAError(String);
 
-const TYPES_L: &'static [&'static str] = &[
-    "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "null", "char",
-    "string", "box", "ptr", "addr", "list",
-];
-
 const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
@@ -123,6 +118,7 @@ impl KEYWORDS {
         }
     }
 }
+
 #[derive(Debug, PartialEq)]
 pub enum OPS {
     And,    // &
@@ -132,6 +128,8 @@ pub enum OPS {
     RShift, // >>
     Not,    // ~
     // Assignment
+    As,       // =
+    NotAs,    // ~=
     AndAs,    // &=
     OrAs,     // |=
     XorAs,    // ^=
@@ -176,10 +174,8 @@ pub enum TOKEN {
     Template(String),
     Char(char),
     Error(String),
-    Percent,
     OArray,
     CArray,
-    FSlash,
     Comma,
     Colon,
     SColon,
@@ -238,21 +234,6 @@ fn seek_past_whitespace(data: &str) -> usize {
     return index;
 }
 
-pub fn parse_op_fslash(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
-    let c = data.chars().next();
-    match c {
-        Some(c) => {
-            if c == '=' {
-                vec.push((TOKEN::Operator(OPS::DivAs), 2));
-            } else {
-                vec.push((TOKEN::Operator(OPS::Div), 1));
-            }
-        }
-        _ => {
-            vec.push((TOKEN::Operator(OPS::Div), 1));
-        }
-    }
-}
 pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>, prev: &TOKEN) -> () {
     let mut escape = false;
     let mut closed = false;
@@ -427,11 +408,33 @@ pub fn parse_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>, prev: &TOKEN) -> 
     }
 }
 
+pub fn parse_op(
+    data: &str,
+    vec: &mut Vec<(TOKEN, usize)>,
+    cmp: char,
+    default: OPS,
+    success: OPS,
+) -> () {
+    let c = data.chars().next();
+    match c {
+        Some(c) => {
+            if c == cmp {
+                vec.push((TOKEN::Operator(success), 2));
+            } else {
+                vec.push((TOKEN::Operator(default), 1));
+            }
+        }
+        _ => vec.push((TOKEN::Operator(default), 1)),
+    }
+}
+
 pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
     let mut vec = Vec::new();
     let prev: TOKEN = TOKEN::Empty;
-    for curr in data.chars() {
-        match curr {
+    let mut iter = data.chars();
+    let mut skip = 0;
+    while let Some(c) = iter.next() {
+        match c {
             ';' => vec.push((TOKEN::SColon, 1)),
             ':' => vec.push((TOKEN::Colon, 1)),
             ',' => vec.push((TOKEN::Comma, 1)),
@@ -443,24 +446,37 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 parse_quoted(&data[1..], &mut vec, &prev);
             }
             '@' => vec.push((TOKEN::At, 1)),
-            '%' => vec.push((TOKEN::Percent, 1)),
             '#' => vec.push((TOKEN::Pound, 1)),
-            '/' => vec.push((TOKEN::FSlash, 1)),
             '[' => vec.push((TOKEN::OArray, 1)),
             ']' => vec.push((TOKEN::CArray, 1)),
             '\'' => {
                 vec.push((TOKEN::SQuote, 1));
-                parse_char(&data[1..], &mut vec, &prev);
+                parse_char(&data[skip + 1..], &mut vec, &prev);
             }
-             '/' => parse_op_fslash(&data[1..], &mut vec),
-           '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
-            '\n' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
-            ' ' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[1..]) + 1)),
-            c if c.is_alphabetic() => parse_word(&data[..], &mut vec),
-            c if c.is_digit(10) => parse_number(&data[..], &mut vec),
+            '/' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
+            '+' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Add, OPS::AddAs),
+            '>' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Gt, OPS::GtEq),
+            '<' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Lt, OPS::LtEq),
+            '-' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Sub, OPS::SubAs),
+            '&' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::And, OPS::AndAs),
+            '|' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Or, OPS::OrAs),
+            '^' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Xor, OPS::XorAs),
+            '%' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mod, OPS::ModAs),
+            '*' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mul, OPS::MulAs),
+            '!' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::NotLog, OPS::NotEquality),
+            '~' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Not, OPS::NotAs),
+            '=' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::As, OPS::Equality),
+            '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
+            '\n' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
+            ' ' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
+            c if c.is_alphabetic() => parse_word(&data[skip..], &mut vec),
+            c if c.is_digit(10) => parse_number(&data[skip..], &mut vec),
             _ => vec.push((TOKEN::Error("Invalid token found".to_string()), 1)),
         }
+        skip += vec.last().unwrap().1;
+        iter.advance_by(vec.last().unwrap().1 - 1);
     }
+    vec.push((TOKEN::EOF,0));
     return vec;
 }
 
@@ -476,7 +492,6 @@ mod tests {
     }
     #[test]
     fn test_seek_past_whitespace_end() {
-        println!("thing");
         let len = seek_past_whitespace("  \t\n");
         assert_eq!(len, 4);
     }
@@ -491,8 +506,14 @@ mod tests {
         assert_eq!(len, 1);
     }
     #[test]
+    fn test_empty() {
+        let vec = tokenize("");
+        vec.get(0).unwrap();
+        assert_eq!(vec.get(0).unwrap().0, TOKEN::EOF);
+    }
+    #[test]
     fn test_tokenize_simple() {
-        let vec = tokenize(";:,)($@%#[]");
+        let vec = tokenize(";:,)($@#[]");
         let semi = vec.get(0).unwrap();
         let colon = vec.get(1).unwrap();
         let comma = vec.get(2).unwrap();
@@ -500,10 +521,9 @@ mod tests {
         let oparen = vec.get(4).unwrap();
         let dollar = vec.get(5).unwrap();
         let at = vec.get(6).unwrap();
-        let percent = vec.get(7).unwrap();
-        let pre = vec.get(8).unwrap();
-        let oarr = vec.get(9).unwrap();
-        let carr = vec.get(10).unwrap();
+        let pre = vec.get(7).unwrap();
+        let oarr = vec.get(8).unwrap();
+        let carr = vec.get(9).unwrap();
 
         assert_eq!(semi.0, TOKEN::SColon);
         assert_eq!(colon.0, TOKEN::Colon);
@@ -512,7 +532,6 @@ mod tests {
         assert_eq!(oparen.0, TOKEN::OParen);
         assert_eq!(dollar.0, TOKEN::Dollar);
         assert_eq!(at.0, TOKEN::At);
-        assert_eq!(percent.0, TOKEN::Percent);
         assert_eq!(pre.0, TOKEN::Pound);
         assert_eq!(oarr.0, TOKEN::OArray);
         assert_eq!(carr.0, TOKEN::CArray);
@@ -533,10 +552,9 @@ mod tests {
     fn test_tokenize_multi_keywords() {
         let vec = tokenize("const mut");
         let one = vec.get(0).unwrap();
-        let two = vec.get(1).unwrap();
+        let two = vec.get(2).unwrap();
 
         assert_eq!(one.0, TOKEN::Keywords(KEYWORDS::CONST));
-
         assert_eq!(two.0, TOKEN::Keywords(KEYWORDS::MUT));
     }
 
@@ -544,12 +562,71 @@ mod tests {
     fn test_tokenize_words() {
         let vec = tokenize("hello worlds");
         let one = vec.get(0).unwrap();
-        let two = vec.get(1).unwrap();
-
+        let two = vec.get(2).unwrap();
         assert_eq!(one.0, TOKEN::Words("hello".to_string()));
         assert_eq!(one.1, 5);
 
         assert_eq!(two.0, TOKEN::Words("worlds".to_string()));
         assert_eq!(two.1, 6);
+    }
+
+    #[test]
+    fn test_tokenize_ops() {
+        let vec0 = tokenize("+ += ++");
+        let vec1 = tokenize("- -= --");
+        let vec2 = tokenize("* *=");
+        let vec3 = tokenize("% %=");
+        let vec4 = tokenize("/ /=");
+        let vec5 = tokenize("< <= << <<=");
+        let vec6 = tokenize("> >= >> >>=");
+        let vec7 = tokenize("& &= &&");
+        let vec8 = tokenize("| |= ||");
+        let vec9 = tokenize("! !=");
+        let vec10 = tokenize("~ ~=");
+        let vec11 = tokenize("= ==");
+
+        assert_eq!(vec0.get(0).unwrap().0, TOKEN::Operator(OPS::Add));
+        assert_eq!(vec0.get(2).unwrap().0, TOKEN::Operator(OPS::AddAs));
+        assert_eq!(vec0.get(4).unwrap().0, TOKEN::Operator(OPS::Inc));
+        
+        assert_eq!(vec1.get(0).unwrap().0, TOKEN::Operator(OPS::Sub));
+        assert_eq!(vec1.get(2).unwrap().0, TOKEN::Operator(OPS::SubAs));
+        assert_eq!(vec1.get(4).unwrap().0, TOKEN::Operator(OPS::Dec));
+        
+        assert_eq!(vec2.get(0).unwrap().0, TOKEN::Operator(OPS::Mul));
+        assert_eq!(vec2.get(2).unwrap().0, TOKEN::Operator(OPS::MulAs));
+        
+        assert_eq!(vec3.get(0).unwrap().0, TOKEN::Operator(OPS::Mod));
+        assert_eq!(vec3.get(2).unwrap().0, TOKEN::Operator(OPS::ModAs));
+        
+        assert_eq!(vec4.get(0).unwrap().0, TOKEN::Operator(OPS::Div));
+        assert_eq!(vec4.get(2).unwrap().0, TOKEN::Operator(OPS::DivAs));
+        
+        assert_eq!(vec5.get(0).unwrap().0, TOKEN::Operator(OPS::Lt));
+        assert_eq!(vec5.get(2).unwrap().0, TOKEN::Operator(OPS::LtEq));
+        assert_eq!(vec5.get(4).unwrap().0, TOKEN::Operator(OPS::LShift));
+        assert_eq!(vec5.get(6).unwrap().0, TOKEN::Operator(OPS::LShiftAs));
+        
+        assert_eq!(vec6.get(0).unwrap().0, TOKEN::Operator(OPS::Gt));
+        assert_eq!(vec6.get(2).unwrap().0, TOKEN::Operator(OPS::GtEq));
+        assert_eq!(vec6.get(4).unwrap().0, TOKEN::Operator(OPS::RShift));
+        assert_eq!(vec6.get(6).unwrap().0, TOKEN::Operator(OPS::RShiftAs));
+        
+        assert_eq!(vec7.get(0).unwrap().0, TOKEN::Operator(OPS::And));
+        assert_eq!(vec7.get(2).unwrap().0, TOKEN::Operator(OPS::AndAs));
+        assert_eq!(vec7.get(4).unwrap().0, TOKEN::Operator(OPS::AndLog));
+        
+        assert_eq!(vec8.get(0).unwrap().0, TOKEN::Operator(OPS::Or));
+        assert_eq!(vec8.get(2).unwrap().0, TOKEN::Operator(OPS::OrAs));
+        assert_eq!(vec8.get(4).unwrap().0, TOKEN::Operator(OPS::OrLog));
+        
+        assert_eq!(vec9.get(0).unwrap().0, TOKEN::Operator(OPS::NotLog));
+        assert_eq!(vec9.get(2).unwrap().0, TOKEN::Operator(OPS::NotEquality));
+        
+        assert_eq!(vec10.get(0).unwrap().0, TOKEN::Operator(OPS::Not));
+        assert_eq!(vec10.get(2).unwrap().0, TOKEN::Operator(OPS::NotAs));
+        
+        assert_eq!(vec11.get(0).unwrap().0, TOKEN::Operator(OPS::As));
+        assert_eq!(vec11.get(2).unwrap().0, TOKEN::Operator(OPS::Equality));
     }
 }
