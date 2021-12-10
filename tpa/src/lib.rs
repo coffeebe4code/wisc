@@ -234,7 +234,7 @@ fn seek_past_whitespace(data: &str) -> usize {
     return index;
 }
 
-pub fn correct_escaped(c: char) -> (bool, char) {
+pub fn has_escaped_error(c: char) -> (bool, char) {
     let mut error = false;
     let mut d = '\0';
     match c {
@@ -252,46 +252,39 @@ pub fn correct_escaped(c: char) -> (bool, char) {
 }
 
 pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
-    let mut escape = false;
-    let mut error = false;
-    let mut closed = false;
+    let mut is_escaped = false;
     let mut new_data: char = '\0';
-    let mut index = 0;
+    let mut index = 1;
+    println!("data {}" , data);
     for c in data.chars() {
         match c {
             '\\' => {
-                escape = true;
-                index += 1
+                is_escaped = true;
             }
             '\'' => {
-                if !escape {
-                    closed = true;
-                    index += 1;
+                if !is_escaped {
                     break;
                 }
                 new_data = '\'';
-                index += 1;
             }
             _ => {
-                if escape {
-                        match correct_escaped(c) {
-                            (false, n) => { new_data = n; }
-                            (true, n) => {
-                                vec.push((TOKEN::Error("Error unexpected character after \\".to_string()), index));
-                                error = true;
-                                index = 0;
-                                escape = false;
+                if is_escaped {
+                        match has_escaped_error(c) {
+                            (false, n) => { new_data = n;index+=1; break;}
+                            (true, _) => {
+                                vec.push((TOKEN::Error("invalid escaped character".to_string()),0));
                             }
                         }
                     }
                 else {
                     new_data = c;
                 }
-                index += 1;
             }
         }
+        index+=1;
     }
-    return vec.push((TOKEN::Char(new_data), index - 1));
+    println!("newdata {}", new_data);
+    vec.push((TOKEN::Char(new_data), index));
 }
 
 pub fn parse_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
@@ -466,7 +459,6 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
             '{' => vec.push((TOKEN::OBrace, 1)),
             '}' => vec.push((TOKEN::CBrace, 1)),
             '"' => {
-                vec.push((TOKEN::DQuote, 1));
                 parse_quoted(&data[1..], &mut vec, &prev);
             }
             '@' => vec.push((TOKEN::At, 1)),
@@ -474,7 +466,6 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
             '[' => vec.push((TOKEN::OArray, 1)),
             ']' => vec.push((TOKEN::CArray, 1)),
             '\'' => {
-                vec.push((TOKEN::SQuote, 1));
                 parse_char(&data[skip + 1..], &mut vec);
             }
             '/' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
@@ -600,14 +591,26 @@ mod tests {
     
     #[test]
     fn test_tokenize_chars() {
-        let vec = tokenize("'\0' 'c' 'a' '\r' '\n' '\t'");
+        let vec = tokenize("'\\0' 'c' 'a' '\\r' '\\n' '\\t' 'h' '\\z'");
+        for i in vec.iter() {
+            println!("{:?}", i.0);
+        }
         let one = vec.get(0).unwrap();
         let two = vec.get(2).unwrap();
-        assert_eq!(one.0, TOKEN::Words("hello".to_string()));
-        assert_eq!(one.1, 5);
-
-        assert_eq!(two.0, TOKEN::Words("worlds".to_string()));
-        assert_eq!(two.1, 6);
+        let three = vec.get(4).unwrap();
+        let four = vec.get(6).unwrap();
+        let five = vec.get(8).unwrap();
+        let six = vec.get(10).unwrap();
+        let seven = vec.get(12).unwrap();
+        let eight = vec.get(14).unwrap();
+        assert_eq!(one.0, TOKEN::Char('\0'));
+        assert_eq!(two.0, TOKEN::Char('c'));
+        assert_eq!(three.0, TOKEN::Char('a'));
+        assert_eq!(four.0, TOKEN::Char('\r'));
+        assert_eq!(five.0, TOKEN::Char('\n'));
+        assert_eq!(six.0, TOKEN::Char('\t'));
+        assert_eq!(seven.0, TOKEN::Char('h'));
+        assert_eq!(eight.0, TOKEN::Error("invalid escaped character".to_string()));
     }
 
     #[test]
