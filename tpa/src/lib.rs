@@ -244,8 +244,8 @@ pub fn has_escaped_error(c: char) -> (bool, char) {
         'r' => d = '\r',
         '\'' => d = '\'',
         '\"' => d = '\"',
-        '0' => d = '\0', 
-        _ => {error = true}
+        '0' => d = '\0',
+        _ => error = true,
     }
 
     return (error, d);
@@ -255,7 +255,7 @@ pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut is_escaped = false;
     let mut new_data: char = '\0';
     let mut index = 1;
-    println!("data {}" , data);
+    println!("data {}", data);
     for c in data.chars() {
         match c {
             '\\' => {
@@ -269,19 +269,22 @@ pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
             }
             _ => {
                 if is_escaped {
-                        match has_escaped_error(c) {
-                            (false, n) => { new_data = n;index+=1; break;}
-                            (true, _) => {
-                                vec.push((TOKEN::Error("invalid escaped character".to_string()),0));
-                            }
+                    match has_escaped_error(c) {
+                        (false, n) => {
+                            new_data = n;
+                            index += 1;
+                            break;
+                        }
+                        (true, _) => {
+                            vec.push((TOKEN::Error("invalid escaped character".to_string()), 0));
                         }
                     }
-                else {
+                } else {
                     new_data = c;
                 }
             }
         }
-        index+=1;
+        index += 1;
     }
     println!("newdata {}", new_data);
     vec.push((TOKEN::Char(new_data), index));
@@ -469,16 +472,70 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 parse_char(&data[skip + 1..], &mut vec);
             }
             '/' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
-            '+' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::Add, OPS::AddAs, '+', OPS::Inc),
-            '>' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::Gt, OPS::GtEq, '>', OPS::RShift),
-            '<' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::Lt, OPS::LtEq, '<', OPS::LShift),
-            '-' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::Sub, OPS::SubAs, '-', OPS::Dec),
-            '&' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::And, OPS::AndAs, '&', OPS::AndLog),
-            '|' => parse_op3(&data[skip + 1..], &mut vec, '=', OPS::Or, OPS::OrAs, '|', OPS::OrLog),
+            '+' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::Add,
+                OPS::AddAs,
+                '+',
+                OPS::Inc,
+            ),
+            '>' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::Gt,
+                OPS::GtEq,
+                '>',
+                OPS::RShift,
+            ),
+            '<' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::Lt,
+                OPS::LtEq,
+                '<',
+                OPS::LShift,
+            ),
+            '-' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::Sub,
+                OPS::SubAs,
+                '-',
+                OPS::Dec,
+            ),
+            '&' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::And,
+                OPS::AndAs,
+                '&',
+                OPS::AndLog,
+            ),
+            '|' => parse_op3(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::Or,
+                OPS::OrAs,
+                '|',
+                OPS::OrLog,
+            ),
             '^' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Xor, OPS::XorAs),
             '%' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mod, OPS::ModAs),
             '*' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mul, OPS::MulAs),
-            '!' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::NotLog, OPS::NotEquality),
+            '!' => parse_op(
+                &data[skip + 1..],
+                &mut vec,
+                '=',
+                OPS::NotLog,
+                OPS::NotEquality,
+            ),
             '~' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Not, OPS::NotAs),
             '=' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::As, OPS::Equality),
             '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
@@ -491,7 +548,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
         skip += vec.last().unwrap().1;
         iter.advance_by(vec.last().unwrap().1 - 1).unwrap();
     }
-    vec.push((TOKEN::EOF,0));
+    vec.push((TOKEN::EOF, 0));
     return vec;
 }
 
@@ -588,7 +645,7 @@ mod tests {
         assert_eq!(two.0, TOKEN::Words("worlds".to_string()));
         assert_eq!(two.1, 6);
     }
-    
+
     #[test]
     fn test_tokenize_chars() {
         let vec = tokenize("'\\0' 'c' 'a' '\\r' '\\n' '\\t' 'h' '\\z'");
@@ -610,7 +667,10 @@ mod tests {
         assert_eq!(five.0, TOKEN::Char('\n'));
         assert_eq!(six.0, TOKEN::Char('\t'));
         assert_eq!(seven.0, TOKEN::Char('h'));
-        assert_eq!(eight.0, TOKEN::Error("invalid escaped character".to_string()));
+        assert_eq!(
+            eight.0,
+            TOKEN::Error("invalid escaped character".to_string())
+        );
     }
 
     #[test]
@@ -631,44 +691,44 @@ mod tests {
         assert_eq!(vec0.get(0).unwrap().0, TOKEN::Operator(OPS::Add));
         assert_eq!(vec0.get(2).unwrap().0, TOKEN::Operator(OPS::AddAs));
         assert_eq!(vec0.get(4).unwrap().0, TOKEN::Operator(OPS::Inc));
-        
+
         assert_eq!(vec1.get(0).unwrap().0, TOKEN::Operator(OPS::Sub));
         assert_eq!(vec1.get(2).unwrap().0, TOKEN::Operator(OPS::SubAs));
         assert_eq!(vec1.get(4).unwrap().0, TOKEN::Operator(OPS::Dec));
-        
+
         assert_eq!(vec2.get(0).unwrap().0, TOKEN::Operator(OPS::Mul));
         assert_eq!(vec2.get(2).unwrap().0, TOKEN::Operator(OPS::MulAs));
-        
+
         assert_eq!(vec3.get(0).unwrap().0, TOKEN::Operator(OPS::Mod));
         assert_eq!(vec3.get(2).unwrap().0, TOKEN::Operator(OPS::ModAs));
-        
+
         assert_eq!(vec4.get(0).unwrap().0, TOKEN::Operator(OPS::Div));
         assert_eq!(vec4.get(2).unwrap().0, TOKEN::Operator(OPS::DivAs));
-        
+
         assert_eq!(vec5.get(0).unwrap().0, TOKEN::Operator(OPS::Lt));
         assert_eq!(vec5.get(2).unwrap().0, TOKEN::Operator(OPS::LtEq));
         assert_eq!(vec5.get(4).unwrap().0, TOKEN::Operator(OPS::LShift));
         // assert_eq!(vec5.get(6).unwrap().0, TOKEN::Operator(OPS::LShiftAs));
-        
+
         assert_eq!(vec6.get(0).unwrap().0, TOKEN::Operator(OPS::Gt));
         assert_eq!(vec6.get(2).unwrap().0, TOKEN::Operator(OPS::GtEq));
         assert_eq!(vec6.get(4).unwrap().0, TOKEN::Operator(OPS::RShift));
         // assert_eq!(vec6.get(6).unwrap().0, TOKEN::Operator(OPS::RShiftAs));
-        
+
         assert_eq!(vec7.get(0).unwrap().0, TOKEN::Operator(OPS::And));
         assert_eq!(vec7.get(2).unwrap().0, TOKEN::Operator(OPS::AndAs));
         assert_eq!(vec7.get(4).unwrap().0, TOKEN::Operator(OPS::AndLog));
-        
+
         assert_eq!(vec8.get(0).unwrap().0, TOKEN::Operator(OPS::Or));
         assert_eq!(vec8.get(2).unwrap().0, TOKEN::Operator(OPS::OrAs));
         assert_eq!(vec8.get(4).unwrap().0, TOKEN::Operator(OPS::OrLog));
-        
+
         assert_eq!(vec9.get(0).unwrap().0, TOKEN::Operator(OPS::NotLog));
         assert_eq!(vec9.get(2).unwrap().0, TOKEN::Operator(OPS::NotEquality));
-        
+
         assert_eq!(vec10.get(0).unwrap().0, TOKEN::Operator(OPS::Not));
         assert_eq!(vec10.get(2).unwrap().0, TOKEN::Operator(OPS::NotAs));
-        
+
         assert_eq!(vec11.get(0).unwrap().0, TOKEN::Operator(OPS::As));
         assert_eq!(vec11.get(2).unwrap().0, TOKEN::Operator(OPS::Equality));
     }
