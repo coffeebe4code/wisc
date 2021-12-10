@@ -113,7 +113,7 @@ impl KEYWORDS {
             40 => KEYWORDS::TRUE,
             41 => KEYWORDS::FALSE,
             _ => {
-                panic!("no enum for u32");
+                panic!("no enum for usize");
             }
         }
     }
@@ -171,7 +171,8 @@ pub enum TOKEN {
     Number([u8; 8]),
     Words(String),
     Keywords(KEYWORDS),
-    Template(String),
+    TOpen(String),
+    TClose(String),
     Char(char),
     Error(String),
     OArray,
@@ -193,7 +194,7 @@ pub enum TOKEN {
     EOF,
 }
 
-fn parse_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+fn lex_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -251,7 +252,7 @@ pub fn has_escaped_error(c: char) -> (bool, char) {
     return (error, d);
 }
 
-pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut is_escaped = false;
     let mut new_data: char = '\0';
     let mut index = 1;
@@ -290,7 +291,7 @@ pub fn parse_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     vec.push((TOKEN::Char(new_data), index));
 }
 
-pub fn parse_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -322,7 +323,7 @@ pub fn parse_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     }
 }
 
-pub fn parse_template(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_topen(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -343,7 +344,7 @@ pub fn parse_template(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     }
 }
 
-pub fn parse_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>, prev: &TOKEN) -> () {
+pub fn lex_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut escape = false;
     let mut closed = false;
     let mut new_data: String = "".to_string();
@@ -403,7 +404,7 @@ pub fn parse_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>, prev: &TOKEN) -> 
     }
 }
 
-pub fn parse_op(
+pub fn lex_op(
     data: &str,
     vec: &mut Vec<(TOKEN, usize)>,
     cmp: char,
@@ -422,7 +423,7 @@ pub fn parse_op(
         _ => vec.push((TOKEN::Operator(default), 1)),
     }
 }
-pub fn parse_op3(
+pub fn lex_op3(
     data: &str,
     vec: &mut Vec<(TOKEN, usize)>,
     cmp: char,
@@ -448,7 +449,6 @@ pub fn parse_op3(
 
 pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
     let mut vec = Vec::new();
-    let prev: TOKEN = TOKEN::Empty;
     let mut iter = data.chars();
     let mut skip = 0;
     while let Some(c) = iter.next() {
@@ -462,17 +462,17 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
             '{' => vec.push((TOKEN::OBrace, 1)),
             '}' => vec.push((TOKEN::CBrace, 1)),
             '"' => {
-                parse_quoted(&data[1..], &mut vec, &prev);
+                lex_quoted(&data[1..], &mut vec);
             }
             '@' => vec.push((TOKEN::At, 1)),
             '#' => vec.push((TOKEN::Pound, 1)),
             '[' => vec.push((TOKEN::OArray, 1)),
             ']' => vec.push((TOKEN::CArray, 1)),
             '\'' => {
-                parse_char(&data[skip + 1..], &mut vec);
+                lex_char(&data[skip + 1..], &mut vec);
             }
-            '/' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
-            '+' => parse_op3(
+            '/' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
+            '+' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -481,7 +481,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '+',
                 OPS::Inc,
             ),
-            '>' => parse_op3(
+            '>' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -490,7 +490,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '>',
                 OPS::RShift,
             ),
-            '<' => parse_op3(
+            '<' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -499,7 +499,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '<',
                 OPS::LShift,
             ),
-            '-' => parse_op3(
+            '-' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -508,7 +508,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '-',
                 OPS::Dec,
             ),
-            '&' => parse_op3(
+            '&' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -517,7 +517,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '&',
                 OPS::AndLog,
             ),
-            '|' => parse_op3(
+            '|' => lex_op3(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
@@ -526,23 +526,23 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
                 '|',
                 OPS::OrLog,
             ),
-            '^' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Xor, OPS::XorAs),
-            '%' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mod, OPS::ModAs),
-            '*' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Mul, OPS::MulAs),
-            '!' => parse_op(
+            '^' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Xor, OPS::XorAs),
+            '%' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Mod, OPS::ModAs),
+            '*' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Mul, OPS::MulAs),
+            '!' => lex_op(
                 &data[skip + 1..],
                 &mut vec,
                 '=',
                 OPS::NotLog,
                 OPS::NotEquality,
             ),
-            '~' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::Not, OPS::NotAs),
-            '=' => parse_op(&data[skip + 1..], &mut vec, '=', OPS::As, OPS::Equality),
+            '~' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Not, OPS::NotAs),
+            '=' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::As, OPS::Equality),
             '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
             '\n' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
             ' ' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
-            c if c.is_alphabetic() => parse_word(&data[skip..], &mut vec),
-            c if c.is_digit(10) => parse_number(&data[skip..], &mut vec),
+            c if c.is_alphabetic() => lex_word(&data[skip..], &mut vec),
+            c if c.is_digit(10) => lex_number(&data[skip..], &mut vec),
             _ => vec.push((TOKEN::Error("Invalid token found".to_string()), 1)),
         }
         skip += vec.last().unwrap().1;
