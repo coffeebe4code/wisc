@@ -1,0 +1,7 @@
+[package]
+name = "irgen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cranelift-codegen = "0.78.0"
