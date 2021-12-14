@@ -1,4 +1,5 @@
 #![feature(iter_advance_by)]
+
 #[derive(Debug, PartialEq)]
 pub struct TPAError(String);
 
@@ -8,14 +9,16 @@ pub enum Expr {
     LiteralString(TOKEN),
     Identifier(TOKEN),
     Assignment(TOKEN, Box<Expr>),
-    Add(Box<Expr>, 
-    Call(TOKEN, Vec),
+    Add(Box<Expr>, Box<Expr>), 
+    Call(TOKEN, Vec<Expr>),
+    Error(TOKEN, String)
 }
+
 const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
     "in", "of", "break", "enum", "pub", "return", "async", "await", "box", "trait", "ptr", "match",
-    "addr", "list", "vol", "true", "false","func", "function"
+    "addr", "list", "vol", "true", "false","func", "function", "void", 
 ];
 
 const KEYWORDS_SIZE_L: &'static [usize] = &[
@@ -27,7 +30,7 @@ const KEYWORDS_SIZE_L: &'static [usize] = &[
     6, 6, 6, // switch
     3, 2, 2, 5, // break
     4, 3, 6, 5, 5, 3, 5, 3, 5, // match
-    4, 4, 3, 4, 5, 4, 8
+    4, 4, 3, 4, 5, 4, 8, 4 // void
 ];
 
 #[derive(Debug, PartialEq)]
@@ -74,6 +77,7 @@ pub enum KEYWORDS {
     LIST,
     TRUE,
     FALSE,
+    VOID
 }
 
 impl KEYWORDS {
@@ -121,6 +125,9 @@ impl KEYWORDS {
             39 => KEYWORDS::VOL,
             40 => KEYWORDS::TRUE,
             41 => KEYWORDS::FALSE,
+            42 => KEYWORDS::FN,
+            43 => KEYWORDS::FN,
+            44 => KEYWORDS::VOID,
             _ => {
                 panic!("no enum for usize");
             }
@@ -201,6 +208,21 @@ pub enum TOKEN {
     OBrace,
     Empty,
     EOF,
+}
+
+pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
+    let mut full: Vec<Box<Expr>> = Vec::new();
+    let tokens = tokenize(data);
+    let prev = TOKEN::Empty;
+    for token in tokens.iter() {
+        match token {
+            TOKEN::Empty => { },
+            TOKEN::EOF => { },
+
+            _ => { full.push(Box::new(Expr::Error(token, "Unexpected token in parsing"))) } 
+        }
+    }
+    return full;
 }
 
 fn lex_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
