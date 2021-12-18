@@ -1,7 +1,23 @@
 #![feature(iter_advance_by)]
 
-#[derive(Debug, PartialEq)]
-pub struct TPAError(String);
+pub struct Span {
+    start: usize,
+    end: usize,
+}
+
+pub struct Node<T, S = ()> {
+    inner: Box<T>,
+    span: S,
+}
+
+impl<T, S> Node<T, S> {
+    pub fn new(inner: T, span: S) -> Self {
+        Node {
+            inner: Box::new(inner),
+            span,
+        }
+    }
+}
 
 pub enum Expr {
     LiteralNum(TOKEN),
@@ -9,22 +25,18 @@ pub enum Expr {
     LiteralString(TOKEN),
     Identifier(TOKEN),
     Assignment(TOKEN, Box<Expr>),
-    Add(Box<Expr>, Box<Expr>), 
+    Add(Box<Expr>, Box<Expr>),
     Call(TOKEN, Vec<Expr>),
     Error(TOKEN, String),
-    PreExpr(TOKEN, Box<Expr>)
+    PreExpr(TOKEN, Box<Expr>),
 }
-const PRECOM_L: &'static [&'static str] = &[
-    "import", "define"
-];
-const PRECOM_SIZE_L: &'static [usize] = &[
-    6, 6
-];
+const PREPROC_L: &'static [&'static str] = &["import", "define"];
+const PREPROC_SIZE_L: &'static [usize] = &[6, 6];
 const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
     "in", "of", "break", "enum", "pub", "return", "async", "await", "box", "trait", "ptr", "match",
-    "addr", "list", "vol", "true", "false","func", "function", "void",
+    "addr", "list", "vol", "true", "false", "func", "function", "void",
 ];
 
 const KEYWORDS_SIZE_L: &'static [usize] = &[
@@ -36,18 +48,18 @@ const KEYWORDS_SIZE_L: &'static [usize] = &[
     6, 6, 6, // switch
     3, 2, 2, 5, // break
     4, 3, 6, 5, 5, 3, 5, 3, 5, // match
-    4, 4, 3, 4, 5, 4, 8, 4 // void
+    4, 4, 3, 4, 5, 4, 8, 4, // void
 ];
 #[derive(Debug, PartialEq)]
-pub enum PRECOM {
+pub enum PREPROC {
     IMPORT,
-    DEFINE
+    DEFINE,
 }
-impl PRECOM {
-    fn from_usize(value: usize) -> PRECOM {
+impl PREPROC {
+    fn from_usize(value: usize) -> PREPROC {
         match value {
-            0 => PRECOM::IMPORT,
-            1 => PRECOM::DEFINE,
+            0 => PREPROC::IMPORT,
+            1 => PREPROC::DEFINE,
             _ => {
                 panic!("no enum for usize");
             }
@@ -99,7 +111,7 @@ pub enum KEYWORDS {
     LIST,
     TRUE,
     FALSE,
-    VOID
+    VOID,
 }
 
 impl KEYWORDS {
@@ -209,7 +221,7 @@ pub enum TOKEN {
     Number([u8; 8]),
     Words(String),
     Keywords(KEYWORDS),
-    Pre(PRECOM),
+    Pre(PREPROC),
     TOpen(String),
     TClose(String),
     Char(char),
@@ -233,6 +245,10 @@ pub enum TOKEN {
     EOF,
 }
 
+// pub fn parse_preproc(data: &str) -> Result<Expr, Expr> {
+//
+// }
+
 pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
     let mut full: Vec<Box<Expr>> = Vec::new();
     let tokens = tokenize(data);
@@ -241,12 +257,14 @@ pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
     let mut parse_len = 0;
     for token in tokens.iter() {
         match token.0 {
-            TOKEN::Empty => { },
-            TOKEN::EOF => { break; },
-            TOKEN::Pound => {
-                parse_pre(&tokens[index..]);
+            TOKEN::Empty => {}
+            TOKEN::EOF => {
+                break;
             }
-            _ => { }
+            TOKEN::Pound => {
+                //                parse_pre(&tokens[index..]);
+            }
+            _ => {}
         }
         index += 1;
         parse_len += token.1;
@@ -254,17 +272,7 @@ pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
     return full;
 }
 
-pub fn parse_pre(slice: &[(TOKEN, usize)]) -> Result<(Box<Expr>,usize), Expr> {
-   let mut index = 0;
-    let mut expr: Box<Expr>;
-   match slice.first() {
-    Some(TOKEN::Words("import")) => {},
-    Some(TOKEN::Words(_)) => {},
-
-   }
-   return Ok((expr,index));
-}
-fn lex_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+fn lex_number(data: &str) -> (TOKEN, usize) {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -287,7 +295,8 @@ fn lex_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
             break;
         }
     }
-    let val = &data[..index - 1];
+    // return (TOKEN::Number((&data[..index - 1]).to), index);
+    return (TOKEN::Number(usize::to_be_bytes(64)), index);
 }
 
 fn seek_past_whitespace(data: &str) -> usize {
@@ -322,7 +331,7 @@ pub fn has_escaped_error(c: char) -> (bool, char) {
     return (error, d);
 }
 
-pub fn lex_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_char(data: &str) -> (TOKEN, usize) {
     let mut is_escaped = false;
     let mut new_data: char = '\0';
     let mut index = 1;
@@ -347,7 +356,7 @@ pub fn lex_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
                             break;
                         }
                         (true, _) => {
-                            vec.push((TOKEN::Error("invalid escaped character".to_string()), 0));
+                            return (TOKEN::Error("invalid escaped character".to_string()), index);
                         }
                     }
                 } else {
@@ -357,13 +366,49 @@ pub fn lex_char(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
         }
         index += 1;
     }
-    println!("newdata {}", new_data);
-    vec.push((TOKEN::Char(new_data), index));
+    return (TOKEN::Char(new_data), index);
 }
 
-pub fn lex_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_preproc_keywords(data: &str) -> (TOKEN, usize) {
     let mut index = 0;
     let mut found = false;
+    let mut tok: (TOKEN, usize) = (TOKEN::EOF, 0);
+    for c in data.chars() {
+        match c {
+            c if c.is_alphabetic() => {
+                index += 1;
+            }
+            c if c.is_digit(10) => {
+                index += 1;
+            }
+            '-' | '_' => {
+                index += 1;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+    for (i, _x) in PREPROC_L.iter().enumerate() {
+        if index == PREPROC_SIZE_L[i] {
+            if PREPROC_L[i].eq(&data[..index]) {
+                found = true;
+                tok = (TOKEN::Pre(PREPROC::from_usize(i)), KEYWORDS_SIZE_L[i]);
+            }
+        }
+    }
+    if !found {
+        return (
+            TOKEN::Error(String::from("expected valid preprocessor keywords")),
+            index,
+        );
+    }
+    return tok;
+}
+pub fn lex_word(data: &str) -> (TOKEN, usize) {
+    let mut index = 0;
+    let mut found = false;
+    let mut tok: (TOKEN, usize) = (TOKEN::Empty, 0);
     for c in data.chars() {
         match c {
             c if c.is_alphabetic() => {
@@ -384,16 +429,17 @@ pub fn lex_word(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
         if index == KEYWORDS_SIZE_L[i] {
             if KEYWORDS_L[i].eq(&data[..index]) {
                 found = true;
-                vec.push((TOKEN::Keywords(KEYWORDS::from_usize(i)), KEYWORDS_SIZE_L[i]));
+                tok = (TOKEN::Keywords(KEYWORDS::from_usize(i)), KEYWORDS_SIZE_L[i]);
             }
         }
     }
     if !found {
-        vec.push((TOKEN::Words(String::from(&data[..index])), index));
+        return (TOKEN::Words(String::from(&data[..index])), index);
     }
+    return tok;
 }
 
-pub fn lex_topen(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_topen(data: &str) -> (TOKEN, usize) {
     let mut index = 0;
     let mut found = false;
     for c in data.chars() {
@@ -412,9 +458,32 @@ pub fn lex_topen(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
             }
         }
     }
+    return (TOKEN::TOpen(String::from(&data[..index])), index);
 }
 
-pub fn lex_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
+pub fn lex_tclose(data: &str) -> (TOKEN, usize) {
+    let mut index = 0;
+    let mut found = false;
+    for c in data.chars() {
+        match c {
+            c if c.is_alphabetic() => {
+                index += 1;
+            }
+            c if c.is_digit(10) => {
+                index += 1;
+            }
+            '-' | '_' => {
+                index += 1;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+    return (TOKEN::TClose(String::from(&data[..index])), index);
+}
+
+pub fn lex_quoted(data: &str) -> (TOKEN, usize) {
     let mut escape = false;
     let mut closed = false;
     let mut new_data: String = "".to_string();
@@ -470,50 +539,44 @@ pub fn lex_quoted(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
         }
     }
     if !closed {
-        return vec.push((TOKEN::Error("expected closing \"".to_string()), index));
+        return (TOKEN::Error("expected closing \"".to_string()), index);
     }
+    return (TOKEN::Words(new_data), index);
 }
 
-pub fn lex_op(
-    data: &str,
-    vec: &mut Vec<(TOKEN, usize)>,
-    cmp: char,
-    default: OPS,
-    success: OPS,
-) -> () {
+pub fn lex_op(data: &str, cmp: char, default: OPS, success: OPS) -> (TOKEN, usize) {
     let c = data.chars().next();
     match c {
         Some(c) => {
             if c == cmp {
-                vec.push((TOKEN::Operator(success), 2));
+                return (TOKEN::Operator(success), 2);
             } else {
-                vec.push((TOKEN::Operator(default), 1));
+                return (TOKEN::Operator(default), 1);
             }
         }
-        _ => vec.push((TOKEN::Operator(default), 1)),
+        _ => return (TOKEN::Operator(default), 1),
     }
 }
 pub fn lex_op3(
     data: &str,
-    vec: &mut Vec<(TOKEN, usize)>,
     cmp: char,
     default: OPS,
     success: OPS,
     next: char,
     second_success: OPS,
-) -> () {
+) -> (TOKEN, usize) {
     let c = data.chars().next();
     match c {
         Some(c) => {
             if c == cmp {
-                vec.push((TOKEN::Operator(success), 2));
+                return (TOKEN::Operator(success), 2);
             } else if c == next {
-                vec.push((TOKEN::Operator(second_success), 2));
+                return (TOKEN::Operator(second_success), 2);
             } else {
-                vec.push((TOKEN::Operator(default), 1));
+                return (TOKEN::Operator(default), 1);
             }
         }
-        _ => vec.push((TOKEN::Operator(default), 1)),
+        _ => return (TOKEN::Operator(default), 1),
     }
 }
 
@@ -532,87 +595,106 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
             '{' => vec.push((TOKEN::OBrace, 1)),
             '}' => vec.push((TOKEN::CBrace, 1)),
             '"' => {
-                lex_quoted(&data[1..], &mut vec);
+                vec.push(lex_quoted(&data[1..]));
             }
             '@' => vec.push((TOKEN::At, 1)),
             '#' => vec.push((TOKEN::Pound, 1)),
             '[' => vec.push((TOKEN::OArray, 1)),
             ']' => vec.push((TOKEN::CArray, 1)),
             '\'' => {
-                lex_char(&data[skip + 1..], &mut vec);
+                vec.push(lex_char(&data[skip + 1..]));
             }
-            '/' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Div, OPS::DivAs),
-            '+' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::Add,
-                OPS::AddAs,
-                '+',
-                OPS::Inc,
-            ),
-            '>' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::Gt,
-                OPS::GtEq,
-                '>',
-                OPS::RShift,
-            ),
-            '<' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::Lt,
-                OPS::LtEq,
-                '<',
-                OPS::LShift,
-            ),
-            '-' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::Sub,
-                OPS::SubAs,
-                '-',
-                OPS::Dec,
-            ),
-            '&' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::And,
-                OPS::AndAs,
-                '&',
-                OPS::AndLog,
-            ),
-            '|' => lex_op3(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::Or,
-                OPS::OrAs,
-                '|',
-                OPS::OrLog,
-            ),
-            '^' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Xor, OPS::XorAs),
-            '%' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Mod, OPS::ModAs),
-            '*' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Mul, OPS::MulAs),
-            '!' => lex_op(
-                &data[skip + 1..],
-                &mut vec,
-                '=',
-                OPS::NotLog,
-                OPS::NotEquality,
-            ),
-            '~' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::Not, OPS::NotAs),
-            '=' => lex_op(&data[skip + 1..], &mut vec, '=', OPS::As, OPS::Equality),
+            '/' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::Div, OPS::DivAs));
+            }
+            '+' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::Add,
+                    OPS::AddAs,
+                    '+',
+                    OPS::Inc,
+                ));
+            }
+            '>' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::Gt,
+                    OPS::GtEq,
+                    '>',
+                    OPS::RShift,
+                ));
+            }
+            '<' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::Lt,
+                    OPS::LtEq,
+                    '<',
+                    OPS::LShift,
+                ));
+            }
+            '-' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::Sub,
+                    OPS::SubAs,
+                    '-',
+                    OPS::Dec,
+                ));
+            }
+            '&' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::And,
+                    OPS::AndAs,
+                    '&',
+                    OPS::AndLog,
+                ));
+            }
+            '|' => {
+                vec.push(lex_op3(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::Or,
+                    OPS::OrAs,
+                    '|',
+                    OPS::OrLog,
+                ));
+            }
+            '^' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::Xor, OPS::XorAs));
+            }
+            '%' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::Mod, OPS::ModAs));
+            }
+            '*' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::Mul, OPS::MulAs));
+            }
+            '!' => {
+                vec.push(lex_op(
+                    &data[skip + 1..],
+                    '=',
+                    OPS::NotLog,
+                    OPS::NotEquality,
+                ));
+            }
+            '~' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::Not, OPS::NotAs));
+            }
+            '=' => {
+                vec.push(lex_op(&data[skip + 1..], '=', OPS::As, OPS::Equality));
+            }
             '\t' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
             '\n' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
             ' ' => vec.push((TOKEN::Empty, seek_past_whitespace(&data[skip + 1..]) + 1)),
-            c if c.is_alphabetic() => lex_word(&data[skip..], &mut vec),
-            c if c.is_digit(10) => lex_number(&data[skip..], &mut vec),
+            c if c.is_alphabetic() => vec.push(lex_word(&data[skip..])),
+            c if c.is_digit(10) => vec.push(lex_number(&data[skip..])),
             _ => vec.push((TOKEN::Error("Invalid token found".to_string()), 1)),
         }
         skip += vec.last().unwrap().1;
