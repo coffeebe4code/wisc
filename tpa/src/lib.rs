@@ -11,14 +11,20 @@ pub enum Expr {
     Assignment(TOKEN, Box<Expr>),
     Add(Box<Expr>, Box<Expr>), 
     Call(TOKEN, Vec<Expr>),
-    Error(TOKEN, String)
+    Error(TOKEN, String),
+    PreExpr(TOKEN, Box<Expr>)
 }
-
+const PRECOM_L: &'static [&'static str] = &[
+    "import", "define"
+];
+const PRECOM_SIZE_L: &'static [usize] = &[
+    6, 6
+];
 const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
     "in", "of", "break", "enum", "pub", "return", "async", "await", "box", "trait", "ptr", "match",
-    "addr", "list", "vol", "true", "false","func", "function", "void", 
+    "addr", "list", "vol", "true", "false","func", "function", "void",
 ];
 
 const KEYWORDS_SIZE_L: &'static [usize] = &[
@@ -32,6 +38,22 @@ const KEYWORDS_SIZE_L: &'static [usize] = &[
     4, 3, 6, 5, 5, 3, 5, 3, 5, // match
     4, 4, 3, 4, 5, 4, 8, 4 // void
 ];
+#[derive(Debug, PartialEq)]
+pub enum PRECOM {
+    IMPORT,
+    DEFINE
+}
+impl PRECOM {
+    fn from_usize(value: usize) -> PRECOM {
+        match value {
+            0 => PRECOM::IMPORT,
+            1 => PRECOM::DEFINE,
+            _ => {
+                panic!("no enum for usize");
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum KEYWORDS {
@@ -187,6 +209,7 @@ pub enum TOKEN {
     Number([u8; 8]),
     Words(String),
     Keywords(KEYWORDS),
+    Pre(PRECOM),
     TOpen(String),
     TClose(String),
     Char(char),
@@ -214,17 +237,33 @@ pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
     let mut full: Vec<Box<Expr>> = Vec::new();
     let tokens = tokenize(data);
     let prev = TOKEN::Empty;
+    let mut index = 0;
+    let mut parse_len = 0;
     for token in tokens.iter() {
-        match token {
+        match token.0 {
             TOKEN::Empty => { },
-            TOKEN::EOF => { },
-
-            _ => { full.push(Box::new(Expr::Error(token, "Unexpected token in parsing"))) } 
+            TOKEN::EOF => { break; },
+            TOKEN::Pound => {
+                parse_pre(&tokens[index..]);
+            }
+            _ => { }
         }
+        index += 1;
+        parse_len += token.1;
     }
     return full;
 }
 
+pub fn parse_pre(slice: &[(TOKEN, usize)]) -> Result<(Box<Expr>,usize), Expr> {
+   let mut index = 0;
+    let mut expr: Box<Expr>;
+   match slice.first() {
+    Some(TOKEN::Words("import")) => {},
+    Some(TOKEN::Words(_)) => {},
+
+   }
+   return Ok((expr,index));
+}
 fn lex_number(data: &str, vec: &mut Vec<(TOKEN, usize)>) -> () {
     let mut index = 0;
     let mut found = false;
