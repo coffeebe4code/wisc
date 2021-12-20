@@ -279,7 +279,6 @@ pub enum TOKEN {
     Equals,
 }
 
-#[derive(Clone, Copy)]
 pub struct Tracker<'a> {
     slice: &'a str,
     prev: usize,
@@ -333,12 +332,11 @@ impl<'a> Tracker<'a> {
             index: 0
         }
     }
-    pub fn adv(mut self, inc: usize) -> Tracker<'a> {
+    pub fn adv(&mut self, inc: usize) -> () {
             self.prev = self.index;
             self.index += inc;
-            self
     }
-    pub fn get_next(mut self) -> TOKEN {
+    pub fn get_next(&mut self) -> TOKEN {
         let mut local_token = TOKEN::EOF;
         match self.slice[self.index..].chars().next() {
             Some(c) => {
@@ -349,20 +347,19 @@ impl<'a> Tracker<'a> {
         }
         return local_token;
     }
-    pub fn get_slice(self) -> &'a str {
+    pub fn get_slice(&self) -> &'a str {
         return &self.slice[self.index..];
     }
 }
 
 pub fn parse_start(data: &str) -> Vec<Expr> {
     let mut vec: Vec<Expr> = Vec::new();
-    let tracker = Tracker::new(data);
+    let mut tracker = Tracker::new(data);
     loop {
     let token = tracker.get_next();
         match token {
             TOKEN::Pound => {
-                vec.push(parse_preproc(tracker));
-                println!("data 2 {}", tracker.get_slice());
+                vec.push(parse_preproc(&mut tracker));
             }
             TOKEN::EOF => {
                 break;
@@ -377,7 +374,7 @@ pub fn parse_start(data: &str) -> Vec<Expr> {
     return vec;
 }
 
-pub fn parse_preproc(tracker: Tracker) -> Expr {
+pub fn parse_preproc(tracker: &mut Tracker) -> Expr {
     let token = lex_preproc_keywords(tracker.get_slice());
     tracker.adv(token.1);
     let span = Span::new(tracker.prev, tracker.index);
@@ -947,7 +944,6 @@ use std::io::{self, Write};
     fn test_tokenize_quotes() {
         let vec = tokenize("\"hello worlds\"");
         let one = vec.get(0).unwrap();
-        println!("words = {:?}", one.0);
         assert_eq!(one.0, TOKEN::Words("hello worlds".to_string()));
         assert_eq!(one.1, 14);
     }
@@ -955,9 +951,6 @@ use std::io::{self, Write};
     #[test]
     fn test_tokenize_chars() {
         let vec = tokenize("'\\0' 'c' 'a' '\\r' '\\n' '\\t' 'h' '\\z'");
-        for i in vec.iter() {
-            println!("{:?}", i.0);
-        }
         let one = vec.get(0).unwrap();
         let two = vec.get(2).unwrap();
         let three = vec.get(4).unwrap();
@@ -1040,13 +1033,10 @@ use std::io::{self, Write};
     }
     #[test]
     fn test_parse_preprocessor_commands() {
-        println!("start");
-        io::stdout().flush().unwrap();
         let result = parse_start("#import \"math\"");
-        println!("parse end");
-        //let import = Node::new(TOKEN::Pre(PREPROC::IMPORT), Span::new(1,7));
-        //let words = Node::new(Expr::Literal(Node::new(TOKEN::Words("math".to_string()), Span::new(8, 14))), Span::new(8,14));
-        //let expected = Expr::PreExpr(import, words);
-        //assert_eq!(*result.get(0).unwrap(), expected);
+        let import = Node::new(TOKEN::Pre(PREPROC::IMPORT), Span::new(1,7));
+        let words = Node::new(Expr::Literal(Node::new(TOKEN::Words("math".to_string()), Span::new(8, 14))), Span::new(8,14));
+        let expected = Expr::PreExpr(import, words);
+        assert_eq!(*result.get(0).unwrap(), expected);
     }
 }
