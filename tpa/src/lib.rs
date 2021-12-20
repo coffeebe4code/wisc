@@ -1,37 +1,52 @@
 #![feature(iter_advance_by)]
 
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Span {
     start: usize,
     end: usize,
 }
 
-pub struct Node<T, S = ()> {
+impl Span {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+    pub fn union(self, other: Self) -> Self {
+        Self {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
+}
+#[derive(Debug, PartialEq)]
+pub struct Node<T> {
     inner: Box<T>,
-    span: S,
+    span: Span,
 }
 
-impl<T, S> Node<T, S> {
-    pub fn new(inner: T, span: S) -> Self {
+impl<T> Node<T> {
+    pub fn new(inner: T, span: Span) -> Self {
         Node {
             inner: Box::new(inner),
             span,
         }
     }
 }
-
+#[derive(Debug,PartialEq)]
 pub enum Expr {
-    LiteralNum(TOKEN),
-    LiteralChar(TOKEN),
-    LiteralString(TOKEN),
-    Identifier(TOKEN),
-    Assignment(TOKEN, Box<Expr>),
-    Add(Box<Expr>, Box<Expr>),
-    Call(TOKEN, Vec<Expr>),
-    Error(TOKEN, String),
-    PreExpr(TOKEN, Box<Expr>),
+    Literal(Node<TOKEN>),
+    Identifier(Node<TOKEN>),
+    Symbol(Node<TOKEN>),
+    BinOp(Node<TOKEN>, Node<Expr>, Node<Expr>),
+    UnOp(Node<TOKEN>, Node<Expr>, Node<Expr>),
+    AsOp(Node<TOKEN>, Node<Expr>),
+    Call(Node<TOKEN>, Vec<Node<Expr>>),
+    Statement(Node<TOKEN>, Node<Expr>),
+    Error(Node<TOKEN>),
+    PreExpr(Node<TOKEN>, Node<Expr>),
 }
-const PREPROC_L: &'static [&'static str] = &["import", "define"];
-const PREPROC_SIZE_L: &'static [usize] = &[6, 6];
+
+const PREPROC_L: &'static [&'static str] = &["import", "define", "macro", "test"];
+const PREPROC_SIZE_L: &'static [usize] = &[6, 6, 5, 4];
 const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
@@ -54,12 +69,17 @@ const KEYWORDS_SIZE_L: &'static [usize] = &[
 pub enum PREPROC {
     IMPORT,
     DEFINE,
+    MACRO,
+    TEST,
 }
+
 impl PREPROC {
     fn from_usize(value: usize) -> PREPROC {
         match value {
             0 => PREPROC::IMPORT,
             1 => PREPROC::DEFINE,
+            2 => PREPROC::MACRO,
+            3 => PREPROC::TEST,
             _ => {
                 panic!("no enum for usize");
             }
@@ -245,31 +265,49 @@ pub enum TOKEN {
     EOF,
 }
 
-// pub fn parse_preproc(data: &str) -> Result<Expr, Expr> {
-//
-// }
-
-pub fn parse_easy(data: &str) -> Vec<Box<Expr>> {
-    let mut full: Vec<Box<Expr>> = Vec::new();
-    let tokens = tokenize(data);
-    let prev = TOKEN::Empty;
+pub fn parse_start(data: &str) -> Vec<Expr> {
+    let mut vec: Vec<Expr> = Vec::new();
     let mut index = 0;
-    let mut parse_len = 0;
-    for token in tokens.iter() {
-        match token.0 {
-            TOKEN::Empty => {}
-            TOKEN::EOF => {
-                break;
-            }
-            TOKEN::Pound => {
-                //                parse_pre(&tokens[index..]);
-            }
-            _ => {}
+    for c in data.chars() {
+        match c {
+            '#' => { 
+                index += 1;
+                vec.push(parse_preproc(&data[index..], index))
+            },
+            _ => { }
         }
-        index += 1;
-        parse_len += token.1;
     }
-    return full;
+    if index == 0 {
+        vec.push(Expr::Error(Node::new(TOKEN::EOF, Span::new(0,0))));
+        return vec;
+    }
+        return vec;
+}
+
+pub fn parse_preproc(data: &str, index: usize) -> Expr {
+    let token = lex_preproc_keywords(data);
+    let mut counter = token.1;
+    let span = Span::new(index, index + counter);
+    match token.0 {
+        TOKEN::Pre(PREPROC::IMPORT) => {
+            counter += seek_past_whitespace(&data[counter..]);
+            let quoted = lex_quoted(&data[counter..]);
+            match quoted.0 {
+                TOKEN::Words(_) => { 
+                    let token_node = Node::new(token.0, span);
+                    let quoted_node = Node::new(quoted.0, Span::new(counter, counter + quoted.1));
+                    return Expr::PreExpr(token_node, Node::new(Expr::Literal(quoted_node), Span::new(counter, counter + quoted.1)));
+                        }
+                _ => {
+                    return Expr::Error(Node::new(token.0, span));
+                }
+            }
+        }
+        _ => {
+            let span = Span::new(index, index + token.1);
+            return Expr::Error(Node::new(token.0, span));
+        }
+    }
 }
 
 fn lex_number(data: &str) -> (TOKEN, usize) {
@@ -335,7 +373,6 @@ pub fn lex_char(data: &str) -> (TOKEN, usize) {
     let mut is_escaped = false;
     let mut new_data: char = '\0';
     let mut index = 1;
-    println!("data {}", data);
     for c in data.chars() {
         match c {
             '\\' => {
@@ -393,7 +430,7 @@ pub fn lex_preproc_keywords(data: &str) -> (TOKEN, usize) {
         if index == PREPROC_SIZE_L[i] {
             if PREPROC_L[i].eq(&data[..index]) {
                 found = true;
-                tok = (TOKEN::Pre(PREPROC::from_usize(i)), KEYWORDS_SIZE_L[i]);
+                tok = (TOKEN::Pre(PREPROC::from_usize(i)), PREPROC_SIZE_L[i]);
             }
         }
     }
@@ -488,7 +525,13 @@ pub fn lex_quoted(data: &str) -> (TOKEN, usize) {
     let mut closed = false;
     let mut new_data: String = "".to_string();
     let mut index = 0;
-    for c in data.chars() {
+    let tok = (TOKEN::EOF, 0);
+    match data.chars().next() {
+        Some('"') => { index += 1 }
+        Some(_) => { return (TOKEN::Error("expected opening \"".to_string()), 1); }
+        None => { return tok }
+    }
+    for c in (&data[1..]).chars() {
         match c {
             '\\' => {
                 escape = true;
@@ -496,9 +539,9 @@ pub fn lex_quoted(data: &str) -> (TOKEN, usize) {
             }
             '"' => {
                 if !escape {
-                    closed = true;
-                    index += 1;
-                    break;
+                        closed = true;
+                        index += 1;
+                        break;
                 }
                 new_data.push('\"');
                 index += 1;
@@ -595,7 +638,7 @@ pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
             '{' => vec.push((TOKEN::OBrace, 1)),
             '}' => vec.push((TOKEN::CBrace, 1)),
             '"' => {
-                vec.push(lex_quoted(&data[1..]));
+                vec.push(lex_quoted(&data[..]));
             }
             '@' => vec.push((TOKEN::At, 1)),
             '#' => vec.push((TOKEN::Pound, 1)),
@@ -715,6 +758,13 @@ mod tests {
         }
     }
     #[test]
+    fn test_correct_preproc_lengths() {
+        assert_eq!(PREPROC_SIZE_L.len(), PREPROC_L.len());
+        for (i, x) in PREPROC_L.iter().enumerate() {
+            assert_eq!(x.len(), PREPROC_SIZE_L[i]);
+        }
+    }
+    #[test]
     fn test_seek_past_whitespace_end() {
         let len = seek_past_whitespace("  \t\n");
         assert_eq!(len, 4);
@@ -796,6 +846,15 @@ mod tests {
 
         assert_eq!(two.0, TOKEN::Words("worlds".to_string()));
         assert_eq!(two.1, 6);
+    }
+    
+    #[test]
+    fn test_tokenize_quotes() {
+        let vec = tokenize("\"hello worlds\"");
+        let one = vec.get(0).unwrap();
+        println!("words = {:?}", one.0);
+        assert_eq!(one.0, TOKEN::Words("hello worlds".to_string()));
+        assert_eq!(one.1, 14);
     }
 
     #[test]
@@ -883,5 +942,13 @@ mod tests {
 
         assert_eq!(vec11.get(0).unwrap().0, TOKEN::Operator(OPS::As));
         assert_eq!(vec11.get(2).unwrap().0, TOKEN::Operator(OPS::Equality));
+    }
+    #[test]
+    fn test_parse_preprocessor_commands() {
+        let result = parse_start("#import \"math\"");
+        let import = Node::new(TOKEN::Pre(PREPROC::IMPORT), Span::new(1,7));
+        let words = Node::new(Expr::Literal(Node::new(TOKEN::Words("math".to_string()), Span::new(8, 14))), Span::new(8,14));
+        let expected = Expr::PreExpr(import, words);
+        assert_eq!(*result.get(0).unwrap(), expected);
     }
 }
