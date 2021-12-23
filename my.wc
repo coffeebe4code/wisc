@@ -3,7 +3,7 @@ type car: {
   model: string;
 }
 
-function print: (value: fstring) -> () {
+static const print: (value: fstring) -> () {
   println(value);  
 }
 
@@ -30,7 +30,7 @@ const my_print: (value: string) {
   
 }
 
-struct | type toyota: {
+struct & type toyota: {
   make: string;
 }
 const toyota: car {
