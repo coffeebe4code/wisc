@@ -18,33 +18,15 @@ impl Span {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Node<T> {
-    inner: Box<T>,
-    span: Span,
-}
-
-impl<T> Node<T> {
-    pub fn new(inner: T, span: Span) -> Self {
-        Node {
-            inner: Box::new(inner),
-            span,
-        }
-    }
-}
-#[derive(Debug, PartialEq)]
 pub enum Expr {
     NumLiteral((TOKEN, Span)),
     CharLiteral((TOKEN, Span)),
     StringLiteral((TOKEN, Span)),
-    MutDec((TOKEN, Span)),
-    ConstDec((TOKEN, Span)),
-    Identifier((TOKEN, Span)),
-    Symbol((TOKEN, Span)),
+    Declaration((TOKEN, Span), Vec<(TOKEN, Span)>),
     BinOp((TOKEN, Span), Box<Expr>, Box<Expr>),
     UnOp((TOKEN, Span), Box<Expr>, Box<Expr>),
     AsOp((TOKEN, Span), Box<Expr>, Box<Expr>),
     Call((TOKEN, Span), Vec<Box<Expr>>),
-    Statement((TOKEN, Span), Box<Expr>),
     Error((TOKEN, Span)),
     PreExpr((TOKEN, Span), Box<Expr>),
 }
@@ -63,25 +45,34 @@ pub fn parse_preproc(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
 }
 
 pub fn parse_declaration(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
-    let (word, span) = expect(tracker, &lex_word)?;
-    match word {
-        TOKEN::Keywords(PREPROC::IMPORT) => {
-            tracker.adv(seek_past_whitespace(tracker.get_slice()));
-            let (path, pathspan) = expect(tracker, &lex_quoted)?;
-            return Ok(Expr::PreExpr((keywords, span), Box::new(Expr::StringLiteral((path, pathspan))),
-            ));
+    let mut mods:Vec<(TOKEN, Span)> = Vec::new();
+    let name: (TOKEN, Span);
+    loop {
+        let (word, word_span) = expect(tracker, &lex_word)?; 
+        match word {
+            TOKEN::Keywords(KEYWORDS::PUB) => {
+                mods.push((word, word_span));    
+                seek_past_whitespace(tracker.get_slice());
+            },
+            TOKEN::Words(_) => {
+                name = (word, word_span);
+                seek_past_whitespace(tracker.get_slice());
+                break;
+            }
+            _ => return Err((word, word_span))
         }
-        _ => return Err((keywords, span)),
     }
+    let next = tracker.get_next();
+    return Ok(Expr::Declaration(name, mods));
 }
+
+pub fn expect_sig_or_asgn(tracker: &mut Tracker
 
 pub fn expect(
     tracker: &mut Tracker,
     lex: &dyn Fn(&str) -> (TOKEN, usize),
 ) -> Result<(TOKEN, Span), (TOKEN, Span)> {
     let outcome = lex(&tracker.get_slice());
-    println!("tracker slice {}", tracker.get_slice());
-    println!("tracker prev {}, curr {}", tracker.prev(), tracker.current());
     tracker.adv(outcome.1);
     let span = Span::new(tracker.prev(), tracker.current());
     match outcome.0 {
