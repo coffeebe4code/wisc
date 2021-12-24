@@ -239,6 +239,7 @@ mod tests {
                 vec.get(0).unwrap().0,
                 TOKEN::Keywords(KEYWORDS::from_usize(i))
             );
+            assert_eq!(format!("{}", KEYWORDS_L[i]), format!("{}", KEYWORDS::from_usize(i))); 
         }
     }
 

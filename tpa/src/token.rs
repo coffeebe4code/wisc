@@ -36,8 +36,6 @@ pub enum TOKEN {
     BSlash,
     Plus,
     Minus,
-    Gt,
-    Lt,
     Asterisk,
     Amp,
     Pipe,
@@ -99,7 +97,7 @@ pub const KEYWORDS_L: &'static [&'static str] = &[
     "mut", "const", "i32", "u32", "i64", "i16", "u16", "u8", "i8", "bit", "f64", "f32", "fn", "if",
     "else", "type", "this", "null", "undef", "char", "string", "inline", "static", "switch", "for",
     "in", "of", "break", "enum", "pub", "return", "async", "await", "box", "trait", "ptr", "match",
-    "addr", "list", "vol", "true", "false", "func", "function", "void",
+    "addr", "vol", "list", "true", "false", "void",
 ];
 
 pub const KEYWORDS_SIZE_L: &'static [usize] = &[
@@ -111,7 +109,7 @@ pub const KEYWORDS_SIZE_L: &'static [usize] = &[
     6, 6, 6, // switch
     3, 2, 2, 5, // break
     4, 3, 6, 5, 5, 3, 5, 3, 5, // match
-    4, 4, 3, 4, 5, 4, 8, 4, // void
+    4, 3, 4, 4, 5, 4, // void
 ];
 #[derive(Debug, PartialEq)]
 pub enum PREPROC {
@@ -227,13 +225,11 @@ impl KEYWORDS {
             35 => KEYWORDS::PTR,
             36 => KEYWORDS::MATCH,
             37 => KEYWORDS::ADDR,
-            38 => KEYWORDS::LIST,
-            39 => KEYWORDS::VOL,
+            38 => KEYWORDS::VOL,
+            39 => KEYWORDS::LIST,
             40 => KEYWORDS::TRUE,
             41 => KEYWORDS::FALSE,
-            42 => KEYWORDS::FN,
-            43 => KEYWORDS::FN,
-            44 => KEYWORDS::VOID,
+            42 => KEYWORDS::VOID,
             _ => {
                 panic!("no enum for usize");
             }
@@ -260,8 +256,8 @@ pub fn get_token(c: char) -> TOKEN {
         '/' => TOKEN::FSlash,
         '\\' => TOKEN::BSlash,
         '+' => TOKEN::Plus,
-        '>' => TOKEN::Gt,
-        '<' => TOKEN::Lt,
+        '>' => TOKEN::CCaret,
+        '<' => TOKEN::OCaret,
         '-' => TOKEN::Minus,
         '&' => TOKEN::Amp,
         '|' => TOKEN::Pipe,
@@ -279,5 +275,115 @@ pub fn get_token(c: char) -> TOKEN {
         c if c.is_alphabetic() => TOKEN::Alpha,
         c if c.is_digit(10) => TOKEN::Digit,
         _ => TOKEN::Error("Invalid token found".to_string()),
+    }
+}
+
+impl core::fmt::Display for TOKEN {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TOKEN::Operator(op) => format!("[operator {}]",op),
+                TOKEN::Keywords(key) => format!("[keyword {}]",key),
+                _ => "not implemented".to_string()
+            })
+    }
+}
+
+impl std::fmt::Display for KEYWORDS {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(
+            f,
+            "{}",
+            match self {
+    KEYWORDS::MUT => KEYWORDS_L[0],
+    KEYWORDS::CONST => KEYWORDS_L[1],
+    KEYWORDS::I32 => KEYWORDS_L[2],
+    KEYWORDS::U32 => KEYWORDS_L[3],
+    KEYWORDS::I64 => KEYWORDS_L[4],
+    KEYWORDS::I16 => KEYWORDS_L[5],
+    KEYWORDS::U16 => KEYWORDS_L[6],
+    KEYWORDS::U8 => KEYWORDS_L[7],
+    KEYWORDS::I8 => KEYWORDS_L[8],
+    KEYWORDS::BIT => KEYWORDS_L[9],
+    KEYWORDS::F64 => KEYWORDS_L[10],
+    KEYWORDS::F32 => KEYWORDS_L[11],
+    KEYWORDS::FN => KEYWORDS_L[12],
+    KEYWORDS::IF => KEYWORDS_L[13],
+    KEYWORDS::ELSE => KEYWORDS_L[14],
+    KEYWORDS::TYPE => KEYWORDS_L[15],
+    KEYWORDS::THIS => KEYWORDS_L[16],
+    KEYWORDS::NULL => KEYWORDS_L[17],
+    KEYWORDS::UNDEF => KEYWORDS_L[18],
+    KEYWORDS::CHAR => KEYWORDS_L[19],
+    KEYWORDS::STRING => KEYWORDS_L[20],
+    KEYWORDS::INLINE => KEYWORDS_L[21],
+    KEYWORDS::STATIC => KEYWORDS_L[22],
+    KEYWORDS::SWITCH => KEYWORDS_L[23],
+    KEYWORDS::FOR => KEYWORDS_L[24],
+    KEYWORDS::IN => KEYWORDS_L[25],
+    KEYWORDS::OF => KEYWORDS_L[26],
+    KEYWORDS::BREAK => KEYWORDS_L[27],
+    KEYWORDS::ENUM => KEYWORDS_L[28],
+    KEYWORDS::PUB => KEYWORDS_L[29],
+    KEYWORDS::RETURN => KEYWORDS_L[30],
+    KEYWORDS::ASYNC => KEYWORDS_L[31],
+    KEYWORDS::AWAIT => KEYWORDS_L[32],
+    KEYWORDS::BOX => KEYWORDS_L[33],
+    KEYWORDS::TRAIT => KEYWORDS_L[34],
+    KEYWORDS::PTR => KEYWORDS_L[35],
+    KEYWORDS::MATCH => KEYWORDS_L[36],
+    KEYWORDS::ADDR => KEYWORDS_L[37],
+    KEYWORDS::VOL => KEYWORDS_L[38],
+    KEYWORDS::LIST => KEYWORDS_L[39],
+    KEYWORDS::TRUE => KEYWORDS_L[40],
+    KEYWORDS::FALSE => KEYWORDS_L[41],
+    KEYWORDS::VOID => KEYWORDS_L[42],
+    });
+    }
+}
+
+impl std::fmt::Display for OPS {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(
+            f,
+            "{}",
+            match self {
+    OPS::And => "&",    // &
+    OPS::Or => "|",     // |
+    OPS::Xor => "^",    // ^
+    OPS::LShift => "<<", // <<
+    OPS::RShift => ">>", // >>
+    OPS::Not => "~",    // ~
+    OPS::As => "=",       // =
+    OPS::NotAs => "~=",    // ~=
+    OPS::AndAs => "&=",    // &=
+    OPS::OrAs => "|=",     // |=
+    OPS::XorAs => "^=",    // ^=
+    OPS::LShiftAs => "<<=", // <<=
+    OPS::RShiftAs => ">>=", // >>=
+    OPS::AndLog => "&&",      // &&
+    OPS::OrLog => "||",       // ||
+    OPS::NotEquality => "!=", // !=
+    OPS::Equality => "==",    // ==
+    OPS::NotLog => "!",      // !
+    OPS::Lt => "<",   // <
+    OPS::LtEq => "<=", // <=
+    OPS::Gt => ">",   // >
+    OPS::GtEq => ">=", // >=
+    OPS::Add => "+", // +
+    OPS::Sub => "-", // -
+    OPS::Mul => "*", // *
+    OPS::Div => "/", // /
+    OPS::Mod => "%", // %
+    OPS::Inc => "++", // ++
+    OPS::Dec => "--", // --
+    OPS::AddAs => "+=", // +=
+    OPS::SubAs => "-=", // -=
+    OPS::MulAs => "*=", // *=
+    OPS::DivAs => "/", // /=
+    OPS::ModAs => "%=", // %=
+    });
     }
 }

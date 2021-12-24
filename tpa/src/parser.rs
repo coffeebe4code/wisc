@@ -52,11 +52,11 @@ pub fn parse_declaration(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
         match word {
             TOKEN::Keywords(KEYWORDS::PUB) => {
                 mods.push((word, word_span));    
-                seek_past_whitespace(tracker.get_slice());
+                tracker.skip_empty();
             },
             TOKEN::Words(_) => {
                 name = (word, word_span);
-                seek_past_whitespace(tracker.get_slice());
+                tracker.skip_empty();
                 break;
             }
             _ => return Err((word, word_span))
