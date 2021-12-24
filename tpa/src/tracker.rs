@@ -1,6 +1,7 @@
 use crate::lexer::*;
 use crate::token::*;
 
+#[derive(Debug)]
 pub struct Tracker<'a> {
     slice: &'a str,
     prev: usize,
@@ -27,12 +28,29 @@ impl<'a> Tracker<'a> {
                 local_token = get_token(c);
                 if local_token == TOKEN::Empty {
                     self.index += seek_past_whitespace(self.get_slice());
-                    println!("{}", self.get_slice());
+                    self.get_next();
                 }
             }
             _ => (),
         }
         return local_token;
+    }
+    pub fn peek_next(&mut self) -> TOKEN {
+        let mut local_token = TOKEN::EOF;
+        match self.slice[self.index..].chars().next() {
+            Some(c) => {
+                local_token = get_token(c);
+                if local_token == TOKEN::Empty {
+                    self.index += seek_past_whitespace(self.get_slice());
+                    return self.peek_next();
+                }
+            }
+            _ => (),
+        }
+        return local_token;
+    }
+    pub fn skip_empty(&mut self) -> () {
+        self.index += seek_past_whitespace(self.get_slice());
     }
     pub fn get_slice(&self) -> &'a str {
         return &self.slice[self.index..];

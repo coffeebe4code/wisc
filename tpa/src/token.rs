@@ -1,5 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub enum TOKEN {
+    Question,
     Dot,
     Dollar,
     Pound,
@@ -45,6 +46,7 @@ pub enum TOKEN {
     Exclam,
     Tilde,
     Equals,
+    UnderScore,
 }
 
 #[derive(Debug, PartialEq)]
@@ -272,6 +274,8 @@ pub fn get_token(c: char) -> TOKEN {
         '\t' => TOKEN::Empty,
         '\n' => TOKEN::Empty,
         ' ' => TOKEN::Empty,
+        '_' => TOKEN::UnderScore,
+        '?' => TOKEN::Question,
         c if c.is_alphabetic() => TOKEN::Alpha,
         c if c.is_digit(10) => TOKEN::Digit,
         _ => TOKEN::Error("Invalid token found".to_string()),

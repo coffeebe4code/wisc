@@ -368,17 +368,4 @@ mod tests {
         let expected = Expr::PreExpr(import, words);
         assert_eq!(result.unwrap(), expected);
     }
-    
-    fn test_parse_declaration() {
-        let mut tracker = Tracker::new("import \"math\"");
-
-        let result = parse_preproc(&mut tracker);
-        let import = (TOKEN::Pre(PREPROC::IMPORT), Span::new(0, 6));
-        let words = Box::new(Expr::StringLiteral((
-            TOKEN::Words("math".to_string()),
-            Span::new(7, 13),
-        )));
-        let expected = Expr::PreExpr(import, words);
-        assert_eq!(result.unwrap(), expected);
-    }
 }

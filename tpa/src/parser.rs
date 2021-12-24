@@ -35,7 +35,7 @@ pub fn parse_preproc(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
     let (keywords, span) = expect(tracker, &lex_preproc_keywords)?;
     match keywords {
         TOKEN::Pre(PREPROC::IMPORT) => {
-            tracker.adv(seek_past_whitespace(tracker.get_slice()));
+            tracker.skip_empty();
             let (path, pathspan) = expect(tracker, &lex_quoted)?;
             return Ok(Expr::PreExpr((keywords, span), Box::new(Expr::StringLiteral((path, pathspan))),
             ));
@@ -65,8 +65,6 @@ pub fn parse_declaration(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
     let next = tracker.get_next();
     return Ok(Expr::Declaration(name, mods));
 }
-
-pub fn expect_sig_or_asgn(tracker: &mut Tracker
 
 pub fn expect(
     tracker: &mut Tracker,
