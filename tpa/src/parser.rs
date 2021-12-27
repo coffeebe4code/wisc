@@ -28,7 +28,7 @@ pub enum Expr {
     TypeExpr(Option<(TOKEN, Span)>, Box<Expr>),
     Body(Vec<Box<Expr>>),
     Signature(SigKind),
-    Declaration(TOKEN, Span, Vec<(TOKEN, Span)>, Box<Expr>),
+    Declaration(TOKEN, Span, Vec<(TOKEN, Span)>, Option<Box<Expr>>),
     BinOp(TOKEN, Span, Box<Expr>, Box<Expr>),
     UnOp(TOKEN, Span, Box<Expr>, Box<Expr>),
     AsOp(TOKEN, Span, Box<Expr>, Box<Expr>),
@@ -69,31 +69,46 @@ pub fn parse_declaration(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
         }
     }
     let next = tracker.get_next();
-    return Ok(Expr::Declaration(name.0, name.1, mods));
+    return Ok(Expr::Declaration(name.0, name.1, mods, None));
 }
 
-pub fn parse_sigkind(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
-     
+pub fn parse_signame(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
     let quoted = expect(tracker, &lex_word);
     match quoted {
         Ok(q) => { return Ok(Expr::Signature(SigKind::new_name(q.0, q.1))) }
-        Err(_) => { 
-            tracker.reset();
-            let body = expect(tracker, &lex_body);
+        Err(e) => { 
+            return Err(e);
+            }
         } 
     }
-}
 
 pub fn parse_signature(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
     let mut expr: Expr;
-    loop {
-        let quoted = expect(tracker, &lex_word);
-        match quoted {
-            Ok(_) => { }
-            Err(_) => {}
-        }
+    let mut result = parse_signame(tracker);
+    result = if_error_parse(tracker, &parse_sigbody, result);
+    result = if_error_parse(tracker, &parse_sigfunc, result);
+    result = if_error_parse(tracker, &parse_sigarray, result);
+    return result;
+}
+
+////pub fn parse_body(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
+//    
+//}
+
+pub fn if_error_parse(tracker: &mut Tracker, parse: &dyn Fn(&str), result: Result<(TOKEN, Span), (TOKEN, Span)>) -> Result<(TOKEN, Span), (TOKEN, Span)> {
+    match result {
+       Err(_) => {
+           tracker.reset();
+           return parse(tracker);
+       }
+       Ok(_) => result
     }
-    return Ok(expr);
+}
+pub fn expect_token(token: (TOKEN, Span), expected: TOKEN) -> Result<(TOKEN, Span), (TOKEN, Span)> {
+    match token.0 {
+        expected => Ok(token),
+        _ => Err(token)
+    }
 }
 
 pub fn expect(

@@ -4,11 +4,13 @@ mod lexer;
 mod parser;
 mod token;
 mod tracker;
+mod error;
 
 use crate::lexer::*;
 use crate::parser::*;
 use crate::token::*;
 use crate::tracker::*;
+use crate::error::*;
 
 //pub fn parse_start(data: &str) -> Vec<Expr> {
 //    let mut vec: Vec<Expr> = Vec::new();
