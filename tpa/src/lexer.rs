@@ -1,5 +1,18 @@
 use crate::token::*;
 
+pub fn lex_body(data: &str) -> (TOKEN, usize) {
+    let next = data.chars().next();
+    match next {
+        Some('{') => {
+            
+        }
+        Some(_) => { return (TOKEN::Error("Expected {, found {}"), 
+        None(_) => {
+            return (TOKEN::Error("Expected {, found EOF".to_string()), 0);
+        }
+    }
+}
+
 pub fn lex_number(data: &str) -> (TOKEN, usize) {
     let mut index = 0;
     let mut found = false;

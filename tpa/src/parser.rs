@@ -2,33 +2,40 @@ use crate::lexer::*;
 use crate::token::*;
 use crate::tracker::*;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Span {
-    start: usize,
-    end: usize,
+#[derive(Debug, PartialEq)]
+pub enum SigKind {
+    Name(TOKEN, Span),
+    Body(Vec<(TOKEN, Span, Box<SigKind>)>),
+    Func(Vec<(TOKEN, Span, Box<SigKind>)>, Box<SigKind>)
 }
-
-impl Span {
-    pub fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
+impl SigKind {
+    pub fn new_name(tok: TOKEN, span: Span) -> Self {
+        Self::Name(tok,span)
     }
-    pub fn len(self) -> usize {
-        return self.end - self.start + 1;
+    pub fn new_func(props: Vec<(TOKEN, Span, Box<SigKind>)>, ret: Box<SigKind>) -> Self {
+        Self::Func(props, ret)
+    }
+    pub fn new_body(props: Vec<(TOKEN, Span, Box<SigKind>)>) -> Self {
+        Self::Body(props)
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    NumLiteral((TOKEN, Span)),
-    CharLiteral((TOKEN, Span)),
-    StringLiteral((TOKEN, Span)),
-    Declaration((TOKEN, Span), Vec<(TOKEN, Span)>),
-    BinOp((TOKEN, Span), Box<Expr>, Box<Expr>),
-    UnOp((TOKEN, Span), Box<Expr>, Box<Expr>),
-    AsOp((TOKEN, Span), Box<Expr>, Box<Expr>),
-    Call((TOKEN, Span), Vec<Box<Expr>>),
-    Error((TOKEN, Span)),
-    PreExpr((TOKEN, Span), Box<Expr>),
+    NumLiteral(TOKEN, Span),
+    CharLiteral(TOKEN, Span),
+    StringLiteral(TOKEN, Span),
+    TypeExpr(Option<(TOKEN, Span)>, Box<Expr>),
+    Body(Vec<Box<Expr>>),
+    Signature(SigKind),
+    Declaration(TOKEN, Span, Vec<(TOKEN, Span)>, Box<Expr>),
+    BinOp(TOKEN, Span, Box<Expr>, Box<Expr>),
+    UnOp(TOKEN, Span, Box<Expr>, Box<Expr>),
+    AsOp(TOKEN, Span, Box<Expr>, Box<Expr>),
+    Call(TOKEN, Span, Vec<Box<Expr>>),
+    Error(TOKEN, Span),
+    Import(TOKEN, Span),
+    Macro(TOKEN, Span, Box<Expr>)
 }
 
 pub fn parse_preproc(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
@@ -37,8 +44,7 @@ pub fn parse_preproc(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
         TOKEN::Pre(PREPROC::IMPORT) => {
             tracker.skip_empty();
             let (path, pathspan) = expect(tracker, &lex_quoted)?;
-            return Ok(Expr::PreExpr((keywords, span), Box::new(Expr::StringLiteral((path, pathspan))),
-            ));
+            return Ok(Expr::Import(path, pathspan));
         }
         _ => return Err((keywords, span)),
     }
@@ -63,7 +69,31 @@ pub fn parse_declaration(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
         }
     }
     let next = tracker.get_next();
-    return Ok(Expr::Declaration(name, mods));
+    return Ok(Expr::Declaration(name.0, name.1, mods));
+}
+
+pub fn parse_sigkind(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
+     
+    let quoted = expect(tracker, &lex_word);
+    match quoted {
+        Ok(q) => { return Ok(Expr::Signature(SigKind::new_name(q.0, q.1))) }
+        Err(_) => { 
+            tracker.reset();
+            let body = expect(tracker, &lex_body);
+        } 
+    }
+}
+
+pub fn parse_signature(tracker: &mut Tracker) -> Result<Expr, (TOKEN, Span)> {
+    let mut expr: Expr;
+    loop {
+        let quoted = expect(tracker, &lex_word);
+        match quoted {
+            Ok(_) => { }
+            Err(_) => {}
+        }
+    }
+    return Ok(expr);
 }
 
 pub fn expect(

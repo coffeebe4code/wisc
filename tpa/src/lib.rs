@@ -361,12 +361,11 @@ mod tests {
         let mut tracker = Tracker::new("import \"math\"");
 
         let result = parse_preproc(&mut tracker);
-        let import = (TOKEN::Pre(PREPROC::IMPORT), Span::new(0, 6));
-        let words = Box::new(Expr::StringLiteral((
+        let words = (
             TOKEN::Words("math".to_string()),
             Span::new(7, 13),
-        )));
-        let expected = Expr::PreExpr(import, words);
+        );
+        let expected = Expr::Import(words.0, words.1);
         assert_eq!(result.unwrap(), expected);
     }
 }

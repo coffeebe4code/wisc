@@ -61,4 +61,8 @@ impl<'a> Tracker<'a> {
     pub fn current(&self) -> usize {
         return self.index;
     }
+    pub fn reset(&mut self) -> () {
+        self.index = self.prev;
+        self.skip_empty();
+    }
 }

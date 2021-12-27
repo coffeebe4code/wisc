@@ -1,3 +1,24 @@
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Span {
+    start: usize,
+    end: usize,
+}
+
+impl Span {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+    pub fn len(&self) -> usize {
+        return &self.end - &self.start + 1;
+    }
+    pub fn concat(self, other: Span) -> Self {
+        Self {
+           start: self.start.min(other.start),
+           end: self.end.max(other.end)
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum TOKEN {
     Question,
