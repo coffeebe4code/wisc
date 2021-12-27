@@ -7,8 +7,8 @@ pub struct Error {
     end: usize,
     line: usize,
     file: String,
-    expected: &str,
-    found: &str
+    expected: String,
+    found: String
 }
 
 pub enum ErrorKind {
@@ -21,7 +21,7 @@ pub enum ErrorKind {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         return write!(f, "{}", format!("{} {}", self.ekind, self.base));
-    
+        }
 }
 
 impl fmt::Display for ErrorKind {
@@ -33,4 +33,3 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Type => "Type Error: "});
         }
     }
-}

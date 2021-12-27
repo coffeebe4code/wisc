@@ -12,34 +12,6 @@ use crate::token::*;
 use crate::tracker::*;
 use crate::error::*;
 
-//pub fn parse_start(data: &str) -> Vec<Expr> {
-//    let mut vec: Vec<Expr> = Vec::new();
-//    let mut tracker = Tracker::new(data);
-//    loop {
-//        let token = tracker.get_next();
-//        match token {
-//            TOKEN::Pound => {
-//                let result = parse_preproc(&mut tracker);
-//                match result {
-//                    Ok(r) => vec.push(r),
-//                    _ => {}
-//                }
-//            }
-//            TOKEN::EOF => {
-//                break;
-//            }
-//            _ => vec.push(Expr::Error(Node::new(
-//                TOKEN::Error("error".to_string()),
-//                Span::new(1, 1),
-//            ))),
-//        }
-//    }
-//    if tracker.current() == 0 {
-//        vec.push(Expr::Error(Node::new(TOKEN::EOF, Span::new(0, 0))));
-//        return vec;
-//    }
-//    return vec;
-//}
 
 pub fn tokenize(data: &str) -> Vec<(TOKEN, usize)> {
     let mut vec = Vec::new();
@@ -358,6 +330,7 @@ mod tests {
         assert_eq!(vec11.get(0).unwrap().0, TOKEN::Operator(OPS::As));
         assert_eq!(vec11.get(2).unwrap().0, TOKEN::Operator(OPS::Equality));
     }
+    
     #[test]
     fn test_parse_import() {
         let mut tracker = Tracker::new("import \"math\"");
@@ -367,7 +340,27 @@ mod tests {
             TOKEN::Words("math".to_string()),
             Span::new(7, 13),
         );
-        let expected = Expr::Import(words.0, words.1);
+        let expected = PreKind::Import(words.0, words.1);
         assert_eq!(result.unwrap(), expected);
+    }
+    
+    #[test]
+    fn test_parse_sigkinds() {
+        let mut name = Tracker::new("string");
+        let mut body = Tracker::new("{ make: string }");
+        let mut func = Tracker::new("(x: uint8, y: int8) -> int8");
+        let mut arr = Tracker::new("[uint8]");
+
+
+        let name_result = parse_signame(&mut name);
+        let name_exp = SigKind::new_name(TOKEN::Keywords(KEYWORDS::STRING), Span::new(0,6)); 
+        assert_eq!(name_result.unwrap(), name_exp);
+        
+        let body_result = parse_signame(&mut body);
+        let mut body_props = Vec::new();
+        body_props.push((TOKEN::Words("make".to_string()), Span::new(2, 5), Box::new(SigKind::new_name(TOKEN::Keywords(KEYWORDS::STRING), Span::new(8,13)))));
+        let body_exp = SigKind::new_body(body_props); 
+                                         
+        assert_eq!(body_result.unwrap(), body_exp);
     }
 }
