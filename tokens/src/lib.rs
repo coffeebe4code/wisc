@@ -10,7 +10,7 @@ fn hex_bounds(lexer: &mut Lexer<Token>) -> Option<usize> {
 }
 
 #[derive(Logos, Debug, PartialEq)]
-enum Token {
+pub enum Token {
     #[token("import")]
     Import,
     #[token("define")]
@@ -225,15 +225,17 @@ enum Token {
     
     #[regex("[a-zA-Z]+")]
     Symbol,
-    #[regex("0x[0-9a-fA-F]+", hex_bounds)]
+    #[regex("0x[0-9a-fA-F]+")]
     Hex,
     #[regex("0b[0-1]+")]
     Bin,
     #[regex("[0-9]+")]
     Num,
 
+    #[token("\n")]
+    NewLine,
     #[error]
-    #[regex(r"[ \t\r\n\f]+", logos::skip)]
+    #[regex(r"[ \t\r\f]+", logos::skip)]
     Error
     
 }
