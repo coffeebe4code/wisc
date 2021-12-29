@@ -1,23 +1,3 @@
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Span {
-    start: usize,
-    end: usize,
-}
-
-impl Span {
-    pub fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
-    }
-    pub fn len(&self) -> usize {
-        return &self.end - &self.start + 1;
-    }
-    pub fn concat(self, other: Span) -> Self {
-        Self {
-           start: self.start.min(other.start),
-           end: self.end.max(other.end)
-        }
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum TOKEN {
@@ -406,5 +386,29 @@ impl std::fmt::Display for OPS {
     OPS::DivAs => "/", // /=
     OPS::ModAs => "%=", // %=
     });
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn lex_keywords() {
+        let mut lexer = Token::lexer("static inline macro");
+        assert_eq!(lexer.next(), Some(Token::Static));
+        assert_eq!(lexer.span(), 0..6);
+        assert_eq!(lexer.next(), Some(Token::Inline));
+        assert_eq!(lexer.span(), 7..13);
+        assert_eq!(lexer.next(), Some(Token::Macro));
+        assert_eq!(lexer.span(), 14..19);
+    }
+    #[test]
+    fn lex_numbers() {
+        let mut lexer = Token::lexer("222 0x22FF 0b01011");
+        assert_eq!(lexer.next(), Some(Token::Num));
+        assert_eq!(lexer.span(), 0..3);
+        assert_eq!(lexer.next(), Some(Token::Hex));
+        assert_eq!(lexer.span(), 4..10);
+        assert_eq!(lexer.next(), Some(Token::Bin));
+        assert_eq!(lexer.span(), 11..18);
     }
 }
