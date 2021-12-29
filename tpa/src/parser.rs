@@ -70,11 +70,11 @@ pub fn parse_signame(tracker: &mut Tracker) -> Result<SigKind, (TOKEN, Span)> {
 
 pub fn parse_sigbody(tracker: &mut Tracker) -> Result<SigKind, (TOKEN, Span)> {
     let obrace = expect_token(tracker, TOKEN::OBrace)?;
-    match quoted {
-        Ok(q) => Ok(SigKind::new_name(q.0, q.1)),
-        Err(e) => Err(e)
-    }
 
+    loop
+    {
+
+    }
     let cbrace = expect_token(tracker, TOKEN::CBrace)?;
 }
 
@@ -104,7 +104,6 @@ pub fn expect_token(tracker: &mut Tracker, tok: TOKEN) -> Result<(TOKEN,Span), (
         return Err((next, span));
     }
 }
-
 
 pub fn if_error_parse<T>(tracker: &mut Tracker, parse: &dyn Fn(&mut Tracker) -> Result<T, (TOKEN, Span)>, result: Result<T, (TOKEN, Span)>) -> Result<T, (TOKEN, Span)> {
     match result {
