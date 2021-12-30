@@ -1,23 +1,27 @@
-use logos::*;
-use tokens::*;
+use errors::*;
 use lexer::*;
-use errors:*;
+use tokens::*;
 
 pub enum Expr<'source> {
-    Literal{ val: Token<'source> },
-    BinExpr{ op: Token<'source>, lhs: Box<Expr<'source>>, rhs: Box<Expr<'source>>}
+    Literal {
+        val: Token<'source>,
+    },
+    BinExpr {
+        op: Token<'source>,
+        lhs: Box<Expr<'source>>,
+        rhs: Box<Expr<'source>>,
+    },
 }
 impl<'source> Expr<'source> {
     pub fn new_literal(val: Token<'source>) -> Self {
-        Self::Literal{val}
+        Self::Literal { val }
     }
 }
-
 
 pub struct ParserSource<'source> {
     prev: Option<Expr<'source>>,
     lexer: LexerSource<'source>,
-    lineno: usize
+    lineno: usize,
 }
 
 impl<'source> ParserSource<'source> {
@@ -30,33 +34,27 @@ impl<'source> ParserSource<'source> {
     }
 
     pub fn expect_token(&mut self, token: Token) -> Result<Token<'source>, Error> {
-        let result = self.lexer.peek().expect_some()?;
-        match self.lexer.peek() {
-            Some(t) => {
-                if variant_comp(t, &Token::NewLine) {
-                    self.lineno += 1;
-                    return self.expect_token(token);
-                }
-                else if variant_comp(t, &token) {
-                    return Ok(self.lexer.next().unwrap());
-                }
-                Err(Error{str_error: "error".to_string()})
-            },
-            None => Err(Error{str_error: "error".to_string()})
+        let peek = self.lexer.peek();
+        let result = peek.expect_some()?;
+        if variant_comp(result, &Token::NewLine) {
+            self.lineno += 1;
+            return self.expect_token(token);
+        } else if variant_comp(result, &token) {
+            return Ok(self.lexer.next().unwrap());
         }
+        Err(Error {
+            str_error: "error".to_string(),
+        })
     }
     pub fn parse_binexpr(&mut self) -> Result<(), Error> {
-        match self.lexer.peek() {
-            Some(t) => {
-                if t.bin_kind() {
-                    Ok(())
-                }
-                else {
-                    Err(Error { lineno: self.lineno, error_string: "error".to_string() })
-                }
-            },
-            _ => Err(Error { lineno: self.lineno, error_string: "error".to_string()})
+        let peek = self.lexer.peek();
+        let result = peek.expect_some()?;
+        if result.bin_kind() {
+            return Ok(());
         }
+        Err(Error {
+            str_error: "error".to_string(),
+        })
     }
 }
 

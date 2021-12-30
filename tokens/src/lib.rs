@@ -278,7 +278,7 @@ impl<'source> Token<'source> {
             Self::And => true,
             Self::LShift => true,
             Self::RShift => true,
-            _ => false
+            _ => false,
         }
     }
 }

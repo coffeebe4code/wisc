@@ -1,6 +1,6 @@
+use errors::*;
 use logos::*;
 use tokens::*;
-use errors::*;
 
 pub struct LexerSource<'source> {
     pub lexer: Lexer<'source, Token<'source>>,
@@ -25,15 +25,17 @@ impl<'source> LexerSource<'source> {
         self.peeked = None;
     }
 }
-trait TokenExpects<'source> {
-    fn expect_some(&self) -> Result<&'source Token<'source>, Error>;
-}    
+pub trait TokenExpects<'source> {
+    fn expect_some(&self) -> Result<&Token<'source>, Error>;
+}
 
-impl<'source> TokenExpects<'source> for Option<&'source Token<'source>> {
-    fn expect_some(&self) -> Result<&'source Token<'source>, Error> {
+impl<'source> TokenExpects<'source> for Option<&Token<'source>> {
+    fn expect_some(&self) -> Result<&Token<'source>, Error> {
         match self {
             Some(t) => Ok(t),
-            None => Err(Error{str_error: "error".to_string()})
+            None => Err(Error {
+                str_error: "error".to_string(),
+            }),
         }
     }
 }
@@ -56,11 +58,11 @@ mod tests {
     #[test]
     fn lex_peek() {
         let mut lex = LexerSource::new("this is a test");
-        assert_eq!(lex.peek().unwrap(),&Token::This);
-        assert_eq!(lex.next().unwrap(),Token::This);
-        assert_eq!(lex.peek().unwrap(),&Token::Symbol);
+        assert_eq!(lex.peek().unwrap(), &Token::This);
+        assert_eq!(lex.next().unwrap(), Token::This);
+        assert_eq!(lex.peek().unwrap(), &Token::Symbol);
         assert_eq!(lex.lexer.slice(), "is");
-        assert_eq!(lex.peek().unwrap(),&Token::Symbol);
+        assert_eq!(lex.peek().unwrap(), &Token::Symbol);
         assert_eq!(lex.lexer.slice(), "is");
     }
 }
