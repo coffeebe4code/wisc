@@ -1,6 +1,6 @@
 use logos::{Logos, Lexer};
 
-fn hex_bounds(lexer: &mut Lexer<Token>) -> Option<usize> {
+fn hex_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<usize> {
    let trimmed = lexer.slice().trim_start_matches("0x"); 
    let num = usize::from_str_radix(trimmed, 16);
    match num {
@@ -9,8 +9,27 @@ fn hex_bounds(lexer: &mut Lexer<Token>) -> Option<usize> {
    }
 }
 
+fn bin_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<usize> {
+   let trimmed = lexer.slice().trim_start_matches("0b"); 
+   let num = usize::from_str_radix(trimmed, 2);
+   match num {
+        Err(_) => None,
+        Ok(val) => Some(val)
+   }
+}
+
+fn string_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> &'a str {
+   let trimmed = lexer.slice().trim_start_matches("\""); 
+   trimmed.trim_end_matches("\"")
+}
+
+fn char_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<char> {
+   let trimmed = lexer.slice().trim_start_matches("\'").clone(); 
+   trimmed.trim_end_matches("\'").chars().next()
+}
+
 #[derive(Logos, Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     #[token("import")]
     Import,
     #[token("define")]
@@ -218,18 +237,18 @@ pub enum Token {
     #[token("%=")]
     ModAs,
     
-    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#)]
-    DQuote,
-    #[regex(r#"'(\\')'|'(.|\\t|\\u|\\n|\\\\|\\r||\\)'"#)]
-    SQuote,
+    #[regex("\"([^\"\\\\]|\\\\t|\\\\n|\\\\\")*\"", string_bounds)]
+    DQuote(&'a str),
+    #[regex(r#"'(\\')'|'(.|\\t|\\n|\\\\|\\r||\\)'"#, char_bounds)]
+    SQuote(Option<char>),
     
     #[regex("[a-zA-Z]+")]
     Symbol,
-    #[regex("0x[0-9a-fA-F]+")]
-    Hex,
-    #[regex("0b[0-1]+")]
-    Bin,
-    #[regex("[0-9]+")]
+    #[regex("0x[0-9a-fA-F]+", hex_bounds)]
+    Hex(usize),
+    #[regex("0b[0-1]+", bin_bounds)]
+    Bin(usize),
+    #[regex("[1-9][0-9]+|0")]
     Num,
 
     #[token("\n")]
@@ -262,28 +281,40 @@ mod tests {
         let mut lexer = Token::lexer("222 0x22FF 0b01011");
         assert_eq!(lexer.next(), Some(Token::Num));
         assert_eq!(lexer.span(), 0..3);
-        assert_eq!(lexer.next(), Some(Token::Hex));
+        assert_eq!(lexer.next(), Some(Token::Hex(8959)));
         assert_eq!(lexer.span(), 4..10);
-        assert_eq!(lexer.next(), Some(Token::Bin));
+        assert_eq!(lexer.next(), Some(Token::Bin(11)));
         assert_eq!(lexer.span(), 11..18);
     }
     #[test]
     fn lex_string() {
-        let mut lexer = Token::lexer("good \"hello\\\"\\t\"");
+        let mut lexer = Token::lexer("good \"hello\" \"\" \"\\t\"");
         assert_eq!(lexer.next(), Some(Token::Symbol));
         assert_eq!(lexer.span(), 0..4);
-        assert_eq!(lexer.next(), Some(Token::DQuote));
-        assert_eq!(lexer.span(), 5..16);
-        assert_eq!(lexer.slice(), "\"hello\\\"\\t\"");
+        assert_eq!(lexer.next(), Some(Token::DQuote("hello")));
+        assert_eq!(lexer.span(), 5..12);
+        assert_eq!(lexer.slice(), "\"hello\"");
+        assert_eq!(lexer.next(), Some(Token::DQuote("")));
+        assert_eq!(lexer.span(), 13..15);
+        assert_eq!(lexer.next(), Some(Token::DQuote("\t")));
+        assert_eq!(lexer.span(), 16..17);
+
     }
     #[test]
     fn lex_char() {
-        let mut lexer = Token::lexer("'c' '\\'' '\\t' ");
-        assert_eq!(lexer.next(), Some(Token::SQuote));
+        let mut lexer = Token::lexer("'c' '\\'' '\\t' '\\r' '\\0' ''");
+        assert_eq!(lexer.next(), Some(Token::SQuote(Some('c'))));
         assert_eq!(lexer.span(), 0..3);
-        assert_eq!(lexer.next(), Some(Token::SQuote));
+        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\''))));
         assert_eq!(lexer.span(), 4..8);
-        assert_eq!(lexer.next(), Some(Token::SQuote));
+
+        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\t'))));
+        assert_eq!(lexer.span(), 9..13);
+        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\r'))));
+        assert_eq!(lexer.span(), 9..13);
+        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\0'))));
+        assert_eq!(lexer.span(), 9..13);
+        assert_eq!(lexer.next(), Some(Token::SQuote(None)));
         assert_eq!(lexer.span(), 9..13);
     }
     #[test]
