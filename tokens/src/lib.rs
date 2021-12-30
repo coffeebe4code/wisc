@@ -23,9 +23,10 @@ fn string_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> &'a str {
    trimmed.trim_end_matches("\"")
 }
 
-fn char_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<char> {
-   let trimmed = lexer.slice().trim_start_matches("\'").clone(); 
-   trimmed.trim_end_matches("\'").chars().next()
+fn char_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> &'a str {
+   lexer.slice()
+       .trim_start_matches("\'")
+       .trim_end_matches("\'")
 }
 
 #[derive(Logos, Debug, PartialEq)]
@@ -237,10 +238,10 @@ pub enum Token<'a> {
     #[token("%=")]
     ModAs,
     
-    #[regex("\"([^\"\\\\]|\\\\t|\\\\n|\\\\\")*\"", string_bounds)]
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, string_bounds)]
     DQuote(&'a str),
-    #[regex(r#"'(\\')'|'(.|\\t|\\n|\\\\|\\r||\\)'"#, char_bounds)]
-    SQuote(Option<char>),
+    #[regex(r#"'(\\')'|'(.|\\t|\\u|\\n|\\\\|\\0|\\r||\\)'"#, char_bounds)]
+    SQuote(&'a str),
     
     #[regex("[a-zA-Z]+")]
     Symbol,
@@ -288,7 +289,7 @@ mod tests {
     }
     #[test]
     fn lex_string() {
-        let mut lexer = Token::lexer("good \"hello\" \"\" \"\\t\"");
+        let mut lexer = Token::lexer("good \"hello\" \"\" \"\\t\" \"\"\"");
         assert_eq!(lexer.next(), Some(Token::Symbol));
         assert_eq!(lexer.span(), 0..4);
         assert_eq!(lexer.next(), Some(Token::DQuote("hello")));
@@ -296,26 +297,28 @@ mod tests {
         assert_eq!(lexer.slice(), "\"hello\"");
         assert_eq!(lexer.next(), Some(Token::DQuote("")));
         assert_eq!(lexer.span(), 13..15);
-        assert_eq!(lexer.next(), Some(Token::DQuote("\t")));
-        assert_eq!(lexer.span(), 16..17);
+        assert_eq!(lexer.next(), Some(Token::DQuote("\\t")));
+        assert_eq!(lexer.span(), 16..20);
+        assert_eq!(lexer.next(), Some(Token::DQuote("\"")));
+        assert_eq!(lexer.span(), 21..23);
 
     }
     #[test]
     fn lex_char() {
-        let mut lexer = Token::lexer("'c' '\\'' '\\t' '\\r' '\\0' ''");
-        assert_eq!(lexer.next(), Some(Token::SQuote(Some('c'))));
+        let mut lexer = Token::lexer("'c' '\\t' '\\r' '\\0' '' '\\''");
+        assert_eq!(lexer.next(), Some(Token::SQuote("c")));
         assert_eq!(lexer.span(), 0..3);
-        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\''))));
+        assert_eq!(lexer.next(), Some(Token::SQuote("\\t")));
         assert_eq!(lexer.span(), 4..8);
+        assert_eq!(lexer.next(), Some(Token::SQuote("\\r")));
+        assert_eq!(lexer.span(), 9..13);
+        assert_eq!(lexer.next(), Some(Token::SQuote("\\0")));
+        assert_eq!(lexer.span(), 14..18);
+        assert_eq!(lexer.next(), Some(Token::SQuote("")));
+        assert_eq!(lexer.span(), 19..21);
+        assert_eq!(lexer.next(), Some(Token::SQuote("\\'")));
+        assert_eq!(lexer.span(), 18..21);
 
-        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\t'))));
-        assert_eq!(lexer.span(), 9..13);
-        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\r'))));
-        assert_eq!(lexer.span(), 9..13);
-        assert_eq!(lexer.next(), Some(Token::SQuote(Some('\0'))));
-        assert_eq!(lexer.span(), 9..13);
-        assert_eq!(lexer.next(), Some(Token::SQuote(None)));
-        assert_eq!(lexer.span(), 9..13);
     }
     #[test]
     fn lex_single() {
