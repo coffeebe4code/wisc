@@ -1,35 +1,35 @@
-use logos::{Logos, Lexer};
+use logos::{Lexer, Logos};
 
 fn hex_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<usize> {
-   let trimmed = lexer.slice().trim_start_matches("0x"); 
-   let num = usize::from_str_radix(trimmed, 16);
-   match num {
+    let trimmed = lexer.slice().trim_start_matches("0x");
+    let num = usize::from_str_radix(trimmed, 16);
+    match num {
         Err(_) => None,
-        Ok(val) => Some(val)
-   }
+        Ok(val) => Some(val),
+    }
 }
 
 fn bin_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<usize> {
-   let trimmed = lexer.slice().trim_start_matches("0b"); 
-   let num = usize::from_str_radix(trimmed, 2);
-   match num {
+    let trimmed = lexer.slice().trim_start_matches("0b");
+    let num = usize::from_str_radix(trimmed, 2);
+    match num {
         Err(_) => None,
-        Ok(val) => Some(val)
-   }
+        Ok(val) => Some(val),
+    }
+}
+fn slice_begin_end<'a>(trim: &'a str) -> &'a str {
+    &trim[1..trim.len() - 1]
 }
 
 fn string_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> &'a str {
-   let trimmed = lexer.slice().trim_start_matches("\""); 
-   trimmed.trim_end_matches("\"")
+    slice_begin_end(lexer.slice())
 }
 
 fn char_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> &'a str {
-   lexer.slice()
-       .trim_start_matches("\'")
-       .trim_end_matches("\'")
+    slice_begin_end(lexer.slice())
 }
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Clone, Copy)]
 pub enum Token<'a> {
     #[token("import")]
     Import,
@@ -237,12 +237,12 @@ pub enum Token<'a> {
     DivAs,
     #[token("%=")]
     ModAs,
-    
+
     #[regex(r#""([^"\\]|\\t|\\u|\\n|\\")*""#, string_bounds)]
     DQuote(&'a str),
     #[regex(r#"'(\\')'|'(.|\\t|\\u|\\n|\\\\|\\0|\\r||\\)'"#, char_bounds)]
     SQuote(&'a str),
-    
+
     #[regex("[a-zA-Z]+")]
     Symbol,
     #[regex("0x[0-9a-fA-F]+", hex_bounds)]
@@ -256,8 +256,7 @@ pub enum Token<'a> {
     NewLine,
     #[error]
     #[regex(r"[ \t\r\f]+", logos::skip)]
-    Error
-    
+    Error,
 }
 
 #[cfg(test)]
@@ -289,7 +288,7 @@ mod tests {
     }
     #[test]
     fn lex_string() {
-        let mut lexer = Token::lexer("good \"hello\" \"\" \"\\t\" \"\"\"");
+        let mut lexer = Token::lexer("good \"hello\" \"\" \"\\t\" \"\\\"\"");
         assert_eq!(lexer.next(), Some(Token::Symbol));
         assert_eq!(lexer.span(), 0..4);
         assert_eq!(lexer.next(), Some(Token::DQuote("hello")));
@@ -299,9 +298,8 @@ mod tests {
         assert_eq!(lexer.span(), 13..15);
         assert_eq!(lexer.next(), Some(Token::DQuote("\\t")));
         assert_eq!(lexer.span(), 16..20);
-        assert_eq!(lexer.next(), Some(Token::DQuote("\"")));
-        assert_eq!(lexer.span(), 21..23);
-
+        assert_eq!(lexer.next(), Some(Token::DQuote("\\\"")));
+        assert_eq!(lexer.span(), 21..25);
     }
     #[test]
     fn lex_char() {
@@ -317,8 +315,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::SQuote("")));
         assert_eq!(lexer.span(), 19..21);
         assert_eq!(lexer.next(), Some(Token::SQuote("\\'")));
-        assert_eq!(lexer.span(), 18..21);
-
+        assert_eq!(lexer.span(), 22..26);
     }
     #[test]
     fn lex_single() {
@@ -339,4 +336,3 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Backtick));
     }
 }
-

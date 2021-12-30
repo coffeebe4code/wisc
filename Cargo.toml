@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "tokens",
-  "lexer"
+  "lexer",
+  "parser"
 ]
 
