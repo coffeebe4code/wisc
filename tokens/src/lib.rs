@@ -1,4 +1,9 @@
 use logos::{Lexer, Logos};
+use std::mem::discriminant;
+
+pub fn variant_comp<T>(a: &T, b: &T) -> bool {
+    discriminant(a) == discriminant(b)
+}
 
 fn hex_bounds<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> Option<usize> {
     let trimmed = lexer.slice().trim_start_matches("0x");
