@@ -1,5 +1,6 @@
 use logos::*;
 use tokens::*;
+use errors::*;
 
 pub struct LexerSource<'source> {
     pub lexer: Lexer<'source, Token<'source>>,
@@ -22,6 +23,18 @@ impl<'source> LexerSource<'source> {
     }
     pub fn reset(&mut self) -> () {
         self.peeked = None;
+    }
+}
+trait TokenExpects<'source> {
+    fn expect_some(&self) -> Result<&'source Token<'source>, Error>;
+}    
+
+impl<'source> TokenExpects<'source> for Option<&'source Token<'source>> {
+    fn expect_some(&self) -> Result<&'source Token<'source>, Error> {
+        match self {
+            Some(t) => Ok(t),
+            None => Err(Error{str_error: "error".to_string()})
+        }
     }
 }
 

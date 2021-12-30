@@ -264,6 +264,25 @@ pub enum Token<'a> {
     Error,
 }
 
+impl<'source> Token<'source> {
+    pub fn bin_kind(&self) -> bool {
+        match self {
+            Self::Plus => true,
+            Self::Sub => true,
+            Self::Mul => true,
+            Self::Div => true,
+            Self::Mod => true,
+            Self::Not => true,
+            Self::Xor => true,
+            Self::Or => true,
+            Self::And => true,
+            Self::LShift => true,
+            Self::RShift => true,
+            _ => false
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
