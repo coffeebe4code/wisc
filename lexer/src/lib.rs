@@ -25,6 +25,7 @@ impl<'source> LexerSource<'source> {
         self.peeked = None;
     }
 }
+
 pub trait TokenExpects<'source> {
     fn expect_some(&self) -> Result<&Token<'source>, Error>;
 }
@@ -40,6 +41,31 @@ impl<'source> TokenExpects<'source> for Option<&Token<'source>> {
     }
 }
 
+pub trait ResultExpects<'source> {
+    fn expect_kind(&self, kind: &dyn Fn(&Token<'source>) -> bool) -> Result<&Token<'source>, Error>;
+}
+
+impl<'source> ResultExpects<'source> for Result<&Token<'source>, Error> {
+    fn expect_kind(&self, kind: &dyn Fn(&Token<'source>) -> bool) -> Result<&Token<'source>, Error> {
+        match self {
+            Ok(t) => {
+                if kind(*t) {
+                    return Ok(t);
+                }
+        Err(Error {
+            str_error: "error".to_string(),
+        })
+
+            }
+            _ => 
+        Err(Error {
+            str_error: "error".to_string(),
+        })
+
+        }
+    }
+}
+
 impl<'source> Iterator for LexerSource<'source> {
     type Item = Token<'source>;
 
@@ -51,7 +77,22 @@ impl<'source> Iterator for LexerSource<'source> {
         }
     }
 }
-
+pub fn bin_kind<'source>(tok: &Token<'source>) -> bool {
+        match tok {
+            Token::Plus => true,
+            Token::Sub => true,
+            Token::Mul => true,
+            Token::Div => true,
+            Token::Mod => true,
+            Token::Not => true,
+            Token::Xor => true,
+            Token::Or => true,
+            Token::And => true,
+            Token::LShift => true,
+            Token::RShift => true,
+            _ => false,
+        }
+    }
 #[cfg(test)]
 mod tests {
     use crate::*;

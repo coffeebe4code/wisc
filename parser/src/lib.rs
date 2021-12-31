@@ -16,12 +16,14 @@ impl<'source> Expr<'source> {
     pub fn new_literal(val: Token<'source>) -> Self {
         Self::Literal { val }
     }
+    pub fn new_binexpr(op: Token<'source>, lhs: Expr<'source>, rhs: Expr<'source>) -> Self {
+        Self::BinExpr { op, lhs: Box::new(lhs), rhs: Box::new(rhs) }
+    }
 }
 
 pub struct ParserSource<'source> {
     prev: Option<Expr<'source>>,
     lexer: LexerSource<'source>,
-    lineno: usize,
 }
 
 impl<'source> ParserSource<'source> {
@@ -29,32 +31,26 @@ impl<'source> ParserSource<'source> {
         Self {
             prev: None,
             lexer: LexerSource::new(source),
-            lineno: 0,
         }
     }
 
     pub fn expect_token(&mut self, token: Token) -> Result<Token<'source>, Error> {
         let peek = self.lexer.peek();
         let result = peek.expect_some()?;
-        if variant_comp(result, &Token::NewLine) {
-            self.lineno += 1;
-            return self.expect_token(token);
-        } else if variant_comp(result, &token) {
+        if variant_comp(result, &token) {
             return Ok(self.lexer.next().unwrap());
         }
         Err(Error {
             str_error: "error".to_string(),
         })
     }
-    pub fn parse_binexpr(&mut self) -> Result<(), Error> {
+    pub fn parse_binexpr(&mut self) -> Result<Expr<'source>, Error> {
         let peek = self.lexer.peek();
-        let result = peek.expect_some()?;
-        if result.bin_kind() {
-            return Ok(());
-        }
-        Err(Error {
-            str_error: "error".to_string(),
-        })
+        let result = peek.expect_some().expect_kind(&bin_kind)?;
+        Ok(Expr::new_binexpr(self.lexer.next().unwrap(), Expr::new_literal(Token::Num), Expr::new_literal(Token::Num)))
+    }
+    pub fn parse_any_expr(&mut self) -> Result<(), Error> {
+        Ok(())
     }
 }
 
