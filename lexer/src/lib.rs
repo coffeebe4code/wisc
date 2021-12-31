@@ -3,8 +3,8 @@ use logos::*;
 use tokens::*;
 
 pub struct LexerSource<'source> {
-    pub lexer: Lexer<'source, Token<'source>>,
-    peeked: Option<Option<Token<'source>>>,
+    pub lexer: Lexer<'source, Token>,
+    peeked: Option<Option<Token>>,
 }
 
 impl<'source> LexerSource<'source> {
@@ -15,7 +15,7 @@ impl<'source> LexerSource<'source> {
         }
     }
 
-    pub fn peek(&mut self) -> Option<&Token<'source>> {
+    pub fn peek(&mut self) -> Option<&Token> {
         if self.peeked.is_none() {
             self.peeked = Some(self.lexer.next());
         }
@@ -26,14 +26,22 @@ impl<'source> LexerSource<'source> {
     }
 }
 
-pub trait TokenExpects<'source> {
-    fn expect_some(&self) -> Result<&Token<'source>, Error>;
+pub trait TokenExpects {
+    fn expect_some(&self) -> Result<&Token, Error>;
 }
 
-impl<'source> TokenExpects<'source> for Option<&Token<'source>> {
-    fn expect_some(&self) -> Result<&Token<'source>, Error> {
+impl TokenExpects for Option<&Token> {
+    fn expect_some(&self) -> Result<&Token, Error> {
         match self {
-            Some(t) => Ok(t),
+            Some(t) => {
+                if variant_comp(t, &&Token::Error) {
+                    return Err(Error {
+                        str_error: "error".to_string(),
+                    });
+                } else {
+                    return Ok(t);
+                }
+            }
             None => Err(Error {
                 str_error: "error".to_string(),
             }),
@@ -41,16 +49,12 @@ impl<'source> TokenExpects<'source> for Option<&Token<'source>> {
     }
 }
 
-pub trait ResultExpects<'source> {
-    fn expect_kind(&self, kind: &dyn Fn(&Token<'source>) -> bool)
-        -> Result<&Token<'source>, Error>;
+pub trait ResultExpects {
+    fn expect_kind(&self, kind: &dyn Fn(&Token) -> bool) -> Result<&Token, Error>;
 }
 
-impl<'source> ResultExpects<'source> for Result<&Token<'source>, Error> {
-    fn expect_kind(
-        &self,
-        kind: &dyn Fn(&Token<'source>) -> bool,
-    ) -> Result<&Token<'source>, Error> {
+impl ResultExpects for Result<&Token, Error> {
+    fn expect_kind(&self, kind: &dyn Fn(&Token) -> bool) -> Result<&Token, Error> {
         match self {
             Ok(t) => {
                 if kind(*t) {
@@ -68,9 +72,9 @@ impl<'source> ResultExpects<'source> for Result<&Token<'source>, Error> {
 }
 
 impl<'source> Iterator for LexerSource<'source> {
-    type Item = Token<'source>;
+    type Item = Token;
 
-    fn next(&mut self) -> Option<Token<'source>> {
+    fn next(&mut self) -> Option<Token> {
         if let Some(peeked) = self.peeked.take() {
             peeked
         } else {
@@ -78,7 +82,22 @@ impl<'source> Iterator for LexerSource<'source> {
         }
     }
 }
-pub fn bin_kind<'source>(tok: &Token<'source>) -> bool {
+pub fn rh_assoc_kind(tok: &Token) -> bool {
+    match tok {
+        Token::Mul => true,
+        Token::Div => true,
+        Token::Mod => true,
+        Token::Not => true,
+        Token::Xor => true,
+        Token::Or => true,
+        Token::And => true,
+        Token::LShift => true,
+        Token::RShift => true,
+        Token::OParen => true,
+        _ => false,
+    }
+}
+pub fn bin_kind(tok: &Token) -> bool {
     match tok {
         Token::Plus => true,
         Token::Sub => true,
@@ -93,6 +112,43 @@ pub fn bin_kind<'source>(tok: &Token<'source>) -> bool {
         Token::RShift => true,
         _ => false,
     }
+}
+
+pub fn expr_starter(tok: &Token) -> bool {
+    match tok {
+        Token::Symbol => true,
+        Token::Struct => true,
+        Token::Pound => true,
+        Token::Dot => true,
+        Token::Mut => true,
+        Token::Const => true,
+        Token::Type => true,
+        Token::Async => true,
+        Token::Await => true,
+        Token::Break => true,
+        Token::True => true,
+        Token::False => true,
+        Token::Dollar => true,
+        Token::Static => true,
+        Token::Inline => true,
+        Token::OParen => true,
+        Token::OBrace => true,
+        Token::OArray => true,
+        Token::If => true,
+        Token::Match => true,
+        Token::For => true,
+        Token::Dec => true,
+        Token::Inc => true,
+        Token::Pub => true,
+        Token::Return => true,
+        Token::Enum => true,
+        Token::Trait => true,
+        Token::Vol => true,
+        Token::At => true,
+        Token::Data => true,
+        _ => false,
+    }
+
 }
 #[cfg(test)]
 mod tests {

@@ -60,7 +60,6 @@ fn string_bounds<'a>(lexer: &mut Lexer<'a, Token>) -> Result<String, String> {
                         }
                     }
                     escape = false;
-                
                 } else {
                     new_data.push(c);
                 }
@@ -86,20 +85,11 @@ fn char_bounds<'a>(lexer: &mut Lexer<'a, Token>) -> Result<char, String> {
             _ => {
                 if escape {
                     match c {
-                        'n' => {
-                    data = '\n'
-                        }
-                        't' => {
-                    data = '\t'
-                        }
-                        '\\' => {
-                    data = '\\'
-                        }
-                        'r' => {
-                    data = '\r'
-                        }
-                        '0' => {
-                        }
+                        'n' => data = '\n',
+                        't' => data = '\t',
+                        '\\' => data = '\\',
+                        'r' => data = '\r',
+                        '0' => {}
                         _ => {
                             return Err("invalid escape character".to_string());
                         }
@@ -163,6 +153,10 @@ pub enum Token {
     Else,
     #[token("type")]
     Type,
+    #[token("struct")]
+    Struct,
+    #[token("data")]
+    Data,
     #[token("this")]
     This,
     #[token("self")]
@@ -181,8 +175,6 @@ pub enum Token {
     Inline,
     #[token("static")]
     Static,
-    #[token("switch")]
-    Switch,
     #[token("for")]
     For,
     #[token("in")]
