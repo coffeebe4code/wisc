@@ -1,0 +1,43 @@
+type car: {
+  make: string;
+  model: string;
+}
+
+static const print: (value: fstring) -> () {
+  println(value);  
+}
+
+type s: (value: string) -> ();
+
+pub fn actual_print: simple_print {
+  print(value);
+}
+
+type fstring: string;
+
+const print: function(value: fstring) {
+  
+}
+
+type simple_print: (value: string) => {
+
+}
+
+const actual_print: simple_print;
+actual_print("hello");
+
+const my_print: (value: string) {
+  
+}
+
+struct & type toyota: {
+  make: string;
+}
+const toyota: car {
+  make: string;
+}
+
+const toyota: {
+  make: string;
+} = {};
+

@@ -1,5 +1,8 @@
 [workspace]
 members = [
-  "tpa"
+  "tokens",
+  "lexer",
+  "parser",
+  "errors"
 ]
 
