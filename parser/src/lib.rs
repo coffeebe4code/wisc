@@ -12,6 +12,7 @@ pub enum Expr<'source> {
         rhs: Box<Expr<'source>>,
     },
 }
+
 impl<'source> Expr<'source> {
     pub fn new_literal(val: Token<'source>) -> Self {
         Self::Literal { val }
