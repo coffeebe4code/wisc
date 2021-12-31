@@ -5,6 +5,14 @@ pub fn variant_comp<T>(a: &T, b: &T) -> bool {
     discriminant(a) == discriminant(b)
 }
 
+fn num_bounds<'a>(lexer: &mut Lexer<'a, Token>) -> Result<usize, String> {
+    let num = usize::from_str_radix(lexer.slice(), 10);
+    match num {
+        Err(_) => Err("invalid hex value".to_string()),
+        Ok(val) => Ok(val),
+    }
+}
+
 fn hex_bounds<'a>(lexer: &mut Lexer<'a, Token>) -> Result<usize, String> {
     let trimmed = lexer.slice().trim_start_matches("0x");
     let num = usize::from_str_radix(trimmed, 16);
@@ -175,6 +183,10 @@ pub enum Token {
     Inline,
     #[token("static")]
     Static,
+    #[token("iface")]
+    IFace,
+    #[token("generic")]
+    Generic,
     #[token("for")]
     For,
     #[token("in")]
@@ -325,8 +337,8 @@ pub enum Token {
     Hex(usize),
     #[regex("0b[0-1]+", bin_bounds)]
     Bin(usize),
-    #[regex("[1-9][0-9]+|0")]
-    Num,
+    #[regex("[1-9][0-9]+|0", num_bounds)]
+    Num(usize),
 
     #[token("\n")]
     NewLine,
@@ -355,7 +367,7 @@ mod tests {
     #[test]
     fn lex_numbers() {
         let mut lexer = Token::lexer("222 0x22FF 0b01011");
-        assert_eq!(lexer.next(), Some(Token::Num));
+        assert_eq!(lexer.next(), Some(Token::Num(222)));
         assert_eq!(lexer.span(), 0..3);
         assert_eq!(lexer.next(), Some(Token::Hex(8959)));
         assert_eq!(lexer.span(), 4..10);

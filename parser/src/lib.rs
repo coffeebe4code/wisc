@@ -89,10 +89,10 @@ impl<'source> ParserSource<'source> {
     }
     pub fn parse_expr(&mut self) -> Result<Expr, Error> {
         let peek = self.lexer.peek();
-        let result = peek.expect_some()?;
-
-
-        Ok(())
+        peek.expect_some().expect_kind(&expr_starter)?;
+        let actual = self.lexer.next().unwrap();
+        let result = peek.expect_some().expect_kind(&literal_kind);
+        result.
     }
 }
 impl<'source> Iterator for ParserSource<'source> {

@@ -82,6 +82,16 @@ impl<'source> Iterator for LexerSource<'source> {
         }
     }
 }
+pub fn literal_kind(tok: &Token) -> bool {
+    match tok {
+        Token::Hex(_) => true,
+        Token::Num(_) => true,
+        Token::Bin(_) => true,
+        Token::SQuote(_)=> true,
+        Token::DQuote(_) => true,
+        _ => false,
+    }
+}
 pub fn rh_assoc_kind(tok: &Token) -> bool {
     match tok {
         Token::Mul => true,
@@ -130,6 +140,7 @@ pub fn expr_starter(tok: &Token) -> bool {
         Token::False => true,
         Token::Dollar => true,
         Token::Static => true,
+        Token::IFace => true,
         Token::Inline => true,
         Token::OParen => true,
         Token::OBrace => true,
@@ -146,6 +157,19 @@ pub fn expr_starter(tok: &Token) -> bool {
         Token::Vol => true,
         Token::At => true,
         Token::Data => true,
+        Token::As => true,
+        Token::AddAs => true,
+        Token::OrAs => true,
+        Token::XorAs => true,
+        Token::ModAs => true,
+        Token::SubAs => true,
+        Token::DivAs => true,
+        Token::LShiftAs => true,
+        Token::RShiftAs => true,
+        Token::DQuote(_) => true,
+        Token::SQuote(_) => true,
+        Token::Hex(_) => true,
+        Token::Bin(_) => true,
         _ => false,
     }
 
