@@ -29,7 +29,6 @@ impl Expr {
 
 
 pub struct ParserSource<'source> {
-    graph: Vec<Box<Expr>>,
     curr: Option<Expr>,
     peeked_expr: Option<Option<Expr>>,
     lexer: LexerSource<'source>,
@@ -38,7 +37,6 @@ pub struct ParserSource<'source> {
 impl<'source> ParserSource<'source> {
     pub fn new(source: &'source str) -> Self {
         Self {
-            graph: vec![],
             curr: None,
             peeked_expr: None,
             lexer: LexerSource::new(source),
@@ -111,22 +109,18 @@ impl<'source> ParserSource<'source> {
     }
     pub fn parse_expr(&mut self) -> Result<(), Error> {
         let peek = self.lexer.peek();
-        println!("{:?}", peek);
+        println!("peek => {:?}",peek);
         let some_peek = peek.expect_some();
-        println!("{:?}", some_peek);
+        println!("some_peek => {:?}",some_peek);
         some_peek.expect_kind(&expr_starter)?;
-        println!("2");
         let mut result = self.parse_literal();
         match result {
             Err(_) => result = self.parse_binexpr(),
-            _ => ()
+            Ok(_) => {
+                // looks like I need to check for a rhs of the literal.
+            }
         }
         return result;
-    }
-    pub fn begin(&mut self) -> () {
-        while let Some(expr) = self.next() {
-            self.graph.push(Box::new(expr));
-        }
     }
 }
 impl<'source> Iterator for ParserSource<'source> {
@@ -150,9 +144,14 @@ mod tests {
     
     #[test]
     fn parse_literal() {
-        let data = Box::new(Expr::new_literal(Token::Num(5)));
-        let mut parser = ParserSource::new("5");
-        parser.begin();
-        assert_eq!(parser.graph.first().unwrap().to_owned(), data);
+        let data = Expr::new_literal(Token::Num(5));
+        let mut parser = ParserSource::new("5 22");
+        assert_eq!(parser.next().unwrap(), data);
+    }
+    #[test]
+    fn parse_binexpr() {
+        let data = Expr::new_binexpr(Token::Plus, Expr::new_literal(Token::Num(5)), Expr::new_literal(Token::Num(6)));
+        let mut parser = ParserSource::new("5 + 6");
+        assert_eq!(parser.next().unwrap(), data);
     }
 }

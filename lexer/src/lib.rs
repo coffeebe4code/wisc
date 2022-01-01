@@ -29,9 +29,11 @@ pub trait TokenExpects {
 
 impl TokenExpects for Option<&Token> {
     fn expect_some(&self) -> Result<&Token, Error> {
+        println!("self => {:?}", self);
         match self {
             Some(t) => {
-                if variant_comp(t, &&Token::Error) {
+                println!("self => {:?} {:?}",t, &&Token::Error);
+                if variant_comp(*t, &Token::Error) {
                     return Err(Error {
                         str_error: "error".to_string(),
                     });
@@ -122,7 +124,6 @@ pub fn bin_kind(tok: &Token) -> bool {
 }
 
 pub fn expr_starter(tok: &Token) -> bool {
-    println!("token => {:?}", tok);
     match tok {
         Token::Symbol => true,
         Token::Struct => true,
