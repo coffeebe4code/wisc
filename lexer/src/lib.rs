@@ -21,9 +21,6 @@ impl<'source> LexerSource<'source> {
         }
         self.peeked.as_ref().unwrap().as_ref()
     }
-    pub fn reset(&mut self) -> () {
-        self.peeked = None;
-    }
 }
 
 pub trait TokenExpects {
@@ -125,6 +122,7 @@ pub fn bin_kind(tok: &Token) -> bool {
 }
 
 pub fn expr_starter(tok: &Token) -> bool {
+    println!("token => {:?}", tok);
     match tok {
         Token::Symbol => true,
         Token::Struct => true,
@@ -168,6 +166,7 @@ pub fn expr_starter(tok: &Token) -> bool {
         Token::RShiftAs => true,
         Token::DQuote(_) => true,
         Token::SQuote(_) => true,
+        Token::Num(_) => true,
         Token::Hex(_) => true,
         Token::Bin(_) => true,
         _ => false,

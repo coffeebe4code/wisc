@@ -1,5 +1,6 @@
 use tokens::*;
 
+#[derive(Debug)]
 pub struct Error {
     pub str_error: String,
 }
