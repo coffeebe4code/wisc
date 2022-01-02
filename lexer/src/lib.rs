@@ -29,7 +29,6 @@ pub trait TokenExpects {
 
 impl TokenExpects for Option<&Token> {
     fn expect_some(&self) -> Result<&Token, Error> {
-        println!("self => {:?}", self);
         match self {
             Some(t) => {
                 if variant_comp(*t, &Token::Error) {

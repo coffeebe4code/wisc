@@ -4,7 +4,6 @@ use std::mem::discriminant;
 pub fn variant_comp(a: &Token, b: &Token) -> bool {
     let left = discriminant(a);
     let right = discriminant(b);
-    println!("variant {:?} {:?}", left, right);
     discriminant(a) == discriminant(b)
 }
 
