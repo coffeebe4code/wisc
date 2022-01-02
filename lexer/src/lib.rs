@@ -32,7 +32,6 @@ impl TokenExpects for Option<&Token> {
         println!("self => {:?}", self);
         match self {
             Some(t) => {
-                println!("self => {:?} {:?}",t, &&Token::Error);
                 if variant_comp(*t, &Token::Error) {
                     return Err(Error {
                         str_error: "error".to_string(),
@@ -81,99 +80,106 @@ impl<'source> Iterator for LexerSource<'source> {
         }
     }
 }
-pub fn literal_kind(tok: &Token) -> bool {
-    match tok {
-        Token::Hex(_) => true,
-        Token::Num(_) => true,
-        Token::Bin(_) => true,
-        Token::SQuote(_)=> true,
-        Token::DQuote(_) => true,
-        _ => false,
-    }
+pub trait IsKind {
+    fn is_rh(&self) -> bool;
+    fn is_expr(&self) -> bool;
+    fn is_bin(&self) -> bool;
+    fn is_literal(&self) -> bool;
 }
-pub fn rh_assoc_kind(tok: &Token) -> bool {
-    match tok {
-        Token::Mul => true,
-        Token::Div => true,
-        Token::Mod => true,
-        Token::Not => true,
-        Token::Xor => true,
-        Token::Or => true,
-        Token::And => true,
-        Token::LShift => true,
-        Token::RShift => true,
-        Token::OParen => true,
-        _ => false,
+impl IsKind for &Token {
+    fn is_literal(&self) -> bool {
+        match self {
+            Token::Hex(_) => true,
+            Token::Num(_) => true,
+            Token::Bin(_) => true,
+            Token::SQuote(_) => true,
+            Token::DQuote(_) => true,
+            _ => false,
+        }
     }
-}
-pub fn bin_kind(tok: &Token) -> bool {
-    match tok {
-        Token::Plus => true,
-        Token::Sub => true,
-        Token::Mul => true,
-        Token::Div => true,
-        Token::Mod => true,
-        Token::Not => true,
-        Token::Xor => true,
-        Token::Or => true,
-        Token::And => true,
-        Token::LShift => true,
-        Token::RShift => true,
-        _ => false,
+    fn is_rh(&self) -> bool {
+        match self {
+            Token::Mul => true,
+            Token::Div => true,
+            Token::Mod => true,
+            Token::Not => true,
+            Token::Xor => true,
+            Token::Or => true,
+            Token::And => true,
+            Token::LShift => true,
+            Token::RShift => true,
+            Token::OParen => true,
+            _ => false,
+        }
+    }
+    fn is_bin(&self) -> bool {
+        match self {
+            Token::Plus => true,
+            Token::Sub => true,
+            Token::Mul => true,
+            Token::Div => true,
+            Token::Mod => true,
+            Token::Not => true,
+            Token::Xor => true,
+            Token::Or => true,
+            Token::And => true,
+            Token::LShift => true,
+            Token::RShift => true,
+            _ => false,
+        }
+    }
+    fn is_expr(&self) -> bool {
+        match self {
+            Token::Symbol => true,
+            Token::Struct => true,
+            Token::Pound => true,
+            Token::Dot => true,
+            Token::Mut => true,
+            Token::Const => true,
+            Token::Type => true,
+            Token::Async => true,
+            Token::Await => true,
+            Token::Break => true,
+            Token::True => true,
+            Token::False => true,
+            Token::Dollar => true,
+            Token::Static => true,
+            Token::IFace => true,
+            Token::Inline => true,
+            Token::OParen => true,
+            Token::OBrace => true,
+            Token::OArray => true,
+            Token::If => true,
+            Token::Match => true,
+            Token::For => true,
+            Token::Dec => true,
+            Token::Inc => true,
+            Token::Pub => true,
+            Token::Return => true,
+            Token::Enum => true,
+            Token::Trait => true,
+            Token::Vol => true,
+            Token::At => true,
+            Token::Data => true,
+            Token::As => true,
+            Token::AddAs => true,
+            Token::OrAs => true,
+            Token::XorAs => true,
+            Token::ModAs => true,
+            Token::SubAs => true,
+            Token::DivAs => true,
+            Token::LShiftAs => true,
+            Token::RShiftAs => true,
+            Token::DQuote(_) => true,
+            Token::SQuote(_) => true,
+            Token::Num(_) => true,
+            Token::Hex(_) => true,
+            Token::Bin(_) => true,
+            _ => false,
+        }
     }
 }
 
-pub fn expr_starter(tok: &Token) -> bool {
-    match tok {
-        Token::Symbol => true,
-        Token::Struct => true,
-        Token::Pound => true,
-        Token::Dot => true,
-        Token::Mut => true,
-        Token::Const => true,
-        Token::Type => true,
-        Token::Async => true,
-        Token::Await => true,
-        Token::Break => true,
-        Token::True => true,
-        Token::False => true,
-        Token::Dollar => true,
-        Token::Static => true,
-        Token::IFace => true,
-        Token::Inline => true,
-        Token::OParen => true,
-        Token::OBrace => true,
-        Token::OArray => true,
-        Token::If => true,
-        Token::Match => true,
-        Token::For => true,
-        Token::Dec => true,
-        Token::Inc => true,
-        Token::Pub => true,
-        Token::Return => true,
-        Token::Enum => true,
-        Token::Trait => true,
-        Token::Vol => true,
-        Token::At => true,
-        Token::Data => true,
-        Token::As => true,
-        Token::AddAs => true,
-        Token::OrAs => true,
-        Token::XorAs => true,
-        Token::ModAs => true,
-        Token::SubAs => true,
-        Token::DivAs => true,
-        Token::LShiftAs => true,
-        Token::RShiftAs => true,
-        Token::DQuote(_) => true,
-        Token::SQuote(_) => true,
-        Token::Num(_) => true,
-        Token::Hex(_) => true,
-        Token::Bin(_) => true,
-        _ => false,
-    }
-
-}
 #[cfg(test)]
 mod tests {
     use crate::*;
