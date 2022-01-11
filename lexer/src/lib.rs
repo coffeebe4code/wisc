@@ -79,12 +79,14 @@ impl<'source> Iterator for LexerSource<'source> {
         }
     }
 }
+
 pub trait IsKind {
     fn is_rh(&self) -> bool;
     fn is_expr(&self) -> bool;
     fn is_bin(&self) -> bool;
     fn is_literal(&self) -> bool;
 }
+
 impl IsKind for &Token {
     fn is_literal(&self) -> bool {
         match self {

@@ -2,8 +2,6 @@ use logos::{Lexer, Logos};
 use std::mem::discriminant;
 
 pub fn variant_comp(a: &Token, b: &Token) -> bool {
-    let left = discriminant(a);
-    let right = discriminant(b);
     discriminant(a) == discriminant(b)
 }
 
@@ -172,6 +170,10 @@ pub enum Token {
     This,
     #[token("self")]
     WSelf,
+    #[token("align")]
+    Align,
+    #[token("size")]
+    Size,
     #[token("null")]
     Null,
     #[token("undef")]
@@ -307,7 +309,7 @@ pub enum Token {
     #[token("&&")]
     AndLog,
     #[token("||")]
-    OrgLog,
+    OrLog,
     #[token("!=")]
     NotEquality,
     #[token("==")]
@@ -350,6 +352,35 @@ pub enum Token {
     Error,
 }
 
+impl Token {
+    pub fn get_precedence(&self) -> usize {
+        match self {
+            Token::Inc => 1,
+            Token::Dec => 1,
+            Token::Dot => 1,
+            Token::OArray => 1,
+            Token::OParen => 1,
+            Token::Addr => 2,
+            Token::Not => 2,
+            Token::NotLog => 2,
+            Token::Size => 2,
+            Token::Align => 2,
+            Token::Mul => 3,
+            Token::Div => 3,
+            Token::Mod => 3,
+            Token::Plus => 4,
+            Token::Sub => 4,
+            Token::LShift => 5,
+            Token::RShift => 5,
+            Token::And => 8,
+            Token::Xor => 9,
+            Token::Or => 10,
+            Token::AndLog => 11,
+            Token::OrLog => 12,
+            _ => 0
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::*;
