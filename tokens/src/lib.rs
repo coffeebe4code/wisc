@@ -377,7 +377,7 @@ impl Token {
             Token::Or => 10,
             Token::AndLog => 11,
             Token::OrLog => 12,
-            _ => 0
+            _ => 0,
         }
     }
 }

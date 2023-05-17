@@ -29,31 +29,20 @@ impl Expr {
 
 pub struct ParserSource<'source> {
     lexer: LexerSource<'source>,
-    operator: Option<Token>
 }
 
 impl<'source> ParserSource<'source> {
     pub fn new(source: &'source str) -> Self {
         Self {
             lexer: LexerSource::new(source),
-            operator: None
         }
     }
 
-    pub fn parse_binexpr(&mut self, lhs: Option<Expr>) -> Result<Expr, Error> {
-        // 1 + 2 * 3
-        let lhs = lhs.expect_some()?; 
-        let operator = self.lexer.next().unwrap(); 
+    pub fn parse_binexpr(&mut self) -> Result<Expr, Error> {
+        let lhs = begin().parse_literal(self)?;
         let peek = self.lexer.peek();
-        let peek_some = peek.expect_some()?; 
-        if peek_some.is_expr() {
-            if self.operator.is_some() {
-               if self.operator.take().unwrap().get_precedence() > operator.get_precedence() {
-// if 1 * 2 + 3 i need to return 1 * 2, but + has already been taken;
-//                    return Ok(Expr::new_binexpr(self.operator.take().unwrap(), lhs, rhs)
-               }
-            }
-            self.operator = Some(operator);
+        let peek_some = peek.expect_some()?;
+        if peek_some.is_bin() {
             let result = self.parse_expr(Some(lhs))?;
             return Ok(result);
         }
@@ -61,41 +50,90 @@ impl<'source> ParserSource<'source> {
             str_error: "error".to_string(),
         })
     }
+
     pub fn parse_literal(&mut self) -> Result<Expr, Error> {
-        let take = self.lexer.next().unwrap();
-        let lit = Expr::new_literal(take);
         let peek = self.lexer.peek();
-        match peek {
-            Some(val) => {
-                match val {
-                    val if val.is_rh() => Ok(self.parse_expr(Some(lit))?),
-                    _ => Ok(lit)
-                }
-            },
-            None => Ok(lit)
+        let peek_some = peek.expect_some()?;
+        match peek_some {
+            peek_some if peek_some.is_literal() => {
+                Ok(Expr::new_literal(self.lexer.next().unwrap()))
+            }
+            _ => Err(Error {
+                str_error: "error".to_string(),
+            }),
         }
     }
+
     pub fn parse_expr(&mut self, lhs: Option<Expr>) -> Result<Expr, Error> {
         let peek = self.lexer.peek();
         let peek_some = peek.expect_some()?;
         match peek_some {
             peek_some if peek_some.is_literal() => Ok(self.parse_literal()?),
-            peek_some if peek_some.is_bin() => Ok(self.parse_binexpr(lhs)?),
+            peek_some if peek_some.is_bin() => Ok(self.parse_binexpr()?),
             _ => Err(Error {
                 str_error: "error".to_string(),
             }),
         }
     }
 }
+
 impl<'source> Iterator for ParserSource<'source> {
     type Item = Expr;
 
     fn next(&mut self) -> Option<Expr> {
-            match self.parse_expr(None) {
-                Ok(val) => Some(val),
-                Err(err) => None,
+        match self.parse_expr(None) {
+            Ok(val) => Some(val),
+            Err(err) => None,
         }
     }
+}
+
+pub trait ParseChainer<'source> {
+    fn parse_literal(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error>;
+    fn parse_bin(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error>;
+    fn parse_mul(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error>;
+    fn parse_add(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error>;
+}
+
+impl<'source> ParseChainer<'source> for Result<Expr, Error> {
+    fn parse_literal(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error> {
+        match self {
+            Ok(val) => Ok(val.to_owned()),
+            Err(_) => {
+                let peek = parser.lexer.peek();
+                let peek_some = peek.expect_some()?;
+                match peek_some {
+                    peek_some if peek_some.is_literal() => {
+                        Ok(Expr::new_literal(parser.lexer.next().unwrap()))
+                    }
+                    _ => Err(Error {
+                        str_error: "error".to_string(),
+                    }),
+                }
+            }
+        }
+    }
+    fn parse_add(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error> {
+        Err(Error {
+            str_error: "error".to_string(),
+        })
+    }
+    fn parse_mul(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error> {
+        Err(Error {
+            str_error: "error".to_string(),
+        })
+    }
+    fn parse_bin(&self, parser: &mut ParserSource<'source>) -> Result<Expr, Error> {
+        Err(Error {
+            str_error: "error".to_string(),
+        })
+    }
+}
+
+fn begin() -> Result<Expr, Error> {
+        Err(Error {
+            str_error: "error".to_string(),
+        })
 }
 
 pub trait ExprExpect {
@@ -105,9 +143,7 @@ pub trait ExprExpect {
 impl ExprExpect for Option<Expr> {
     fn expect_some(&self) -> Result<Expr, Error> {
         match self {
-            Some(t) => {
-                Ok(t.clone())
-            }
+            Some(t) => Ok(t.to_owned()),
             None => Err(Error {
                 str_error: "error".to_string(),
             }),
